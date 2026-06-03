@@ -1,0 +1,78 @@
+project:
+  name: toy_platformer_continuous_cnn_parallel
+  seed: 42
+  device: cpu
+
+env:
+  name: toy_platformer
+  randomize: true
+  train_seed_mode: random
+  eval_seed_start: 10000
+  num_eval_seeds: 20
+
+  width: 220
+  height: 18
+  camera_width: 36
+  max_steps: 1400
+  render_scale: 24
+  observation_mode: full_screen
+  include_state_features: true
+
+  enable_gaps: true
+  enable_bridge_platforms: true
+  enable_upper_platforms: true
+  enable_moving_enemies: true
+  enable_coins: true
+  enable_question_blocks: true
+  enable_items: true
+
+  num_gaps: 10
+  num_bridge_gaps: 4
+  num_enemies: 16
+  num_coins: 40
+  num_question_blocks: 8
+  num_upper_platforms: 14
+  num_mid_platforms: 12
+
+  min_gap_width: 2
+  max_gap_width: 4
+  min_bridge_gap_width: 6
+  max_bridge_gap_width: 10
+  min_platform_width: 3
+  max_platform_width: 8
+  min_spacing: 8
+  enemy_speed: 0.04
+
+  stagnation_timeout: 170
+  stagnation_epsilon: 0.05
+  stagnation_penalty: -5.0
+
+reservoir:
+  type: none
+
+agent:
+  model: cnn
+  hidden_dim: 256
+  lr: 0.0003
+  entropy_coef: 0.001
+  value_coef: 0.5
+  clip_eps: 0.15
+  max_grad_norm: 0.5
+  log_std_init: -1.0
+  min_log_std: -3.0
+  max_log_std: 0.0
+
+training:
+  total_steps: 6000000
+  num_envs: 8
+  rollout_steps: 256
+  minibatch_size: 1024
+  update_epochs: 4
+  gamma: 0.99
+  gae_lambda: 0.95
+  save_every_steps: 200000
+  eval_every_steps: 50000
+  eval_episodes: 20
+
+logging:
+  run_dir: runs/toy_platformer_continuous_cnn_parallel

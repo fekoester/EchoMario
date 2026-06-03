@@ -1,0 +1,35 @@
+[project]
+name = "echomario"
+version = "0.1.0"
+description = "Fixed reservoir computing + PPO-trained readout for emulator-style platformer control."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Felix Koester" }
+]
+dependencies = [
+  "numpy>=1.24",
+  "torch>=2.2",
+  "gymnasium>=1.0",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "matplotlib>=3.8",
+  "opencv-python>=4.8",
+  "pygame>=2.6"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5"
+]
+mario = [
+  "gym-super-mario-bros"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
