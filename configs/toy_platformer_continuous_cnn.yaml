@@ -1,7 +1,7 @@
 project:
   name: toy_platformer_continuous_cnn
   seed: 42
-  device: cpu
+  device: cuda
 
 env:
   name: toy_platformer

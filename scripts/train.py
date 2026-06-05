@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -16,8 +17,9 @@ from echomario.envs.make_env import make_env
 from echomario.envs.reset import EpisodeSeedManager
 from echomario.reservoirs.esn import ReservoirLike, make_reservoir
 from echomario.training.evaluate import evaluate_policy
+from echomario.training.env_pool import SubprocEnvPool
 from echomario.training.ppo import ppo_update
-from echomario.training.rollout import collect_rollout_parallel
+from echomario.training.rollout import collect_rollout_env_pool, collect_rollout_parallel, env_is_continuous
 from echomario.utils.checkpoint import save_checkpoint
 from echomario.utils.config import load_config
 from echomario.utils.seeding import set_seed
@@ -69,14 +71,27 @@ def main() -> None:
     set_seed(seed)
 
     device = torch.device(config['project'].get('device', 'cpu'))
+    if device.type == 'cuda':
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.backends.cudnn.benchmark = True
     seed_manager = EpisodeSeedManager(config)
 
     num_envs = int(config['training'].get('num_envs', 1))
     if num_envs < 1:
         raise ValueError('training.num_envs must be at least 1')
 
-    envs = [make_env(config) for _ in range(num_envs)]
-    env = envs[0]
+    rollout_workers = int(config['training'].get('rollout_workers', 0))
+    if rollout_workers not in {0, num_envs}:
+        raise ValueError('training.rollout_workers must be 0 or equal to training.num_envs')
+
+    env_pool = None
+    envs = [] if rollout_workers > 0 else [make_env(config) for _ in range(num_envs)]
+    env = make_env(config) if rollout_workers > 0 else envs[0]
+    if rollout_workers > 0:
+        start_method = str(config['training'].get('env_start_method', 'spawn'))
+        env_pool = SubprocEnvPool(config, num_envs=num_envs, start_method=start_method)
+
     reservoir = make_reservoir(config, input_dim=int(env.observation_space.shape[0]))
     reservoir.reset(batch_size=num_envs)
     policy = build_policy(config, env, reservoir.cfg.size).to(device)
@@ -95,13 +110,33 @@ def main() -> None:
     rollout_steps = int(config['training']['rollout_steps'])
     save_every = int(config['training'].get('save_every_steps', 25000))
     eval_every = int(config['training'].get('eval_every_steps', 25000))
+    minibatch_size = int(config['training']['minibatch_size'])
+    update_epochs = int(config['training']['update_epochs'])
+    value_clip_eps = float(config['training'].get('value_clip_eps', 0.0))
+    target_kl = float(config['training'].get('target_kl', 0.0))
+    entropy_coef_start = float(config['agent']['entropy_coef'])
+    entropy_coef_end = float(config['agent'].get('entropy_coef_end', entropy_coef_start))
+    entropy_anneal_steps = int(config['agent'].get('entropy_anneal_steps', total_steps))
+
+    print(
+        'training setup: '
+        f'device={device}, num_envs={num_envs}, rollout_steps={rollout_steps}, '
+        f'batch={num_envs * rollout_steps}, minibatch_size={minibatch_size}, '
+        f'update_epochs={update_epochs}, rollout_workers={rollout_workers}'
+    )
+
+    def reset_training_spec():
+        return seed_manager.training_reset_spec()
 
     def reset_training_episode(env_idx: int) -> np.ndarray:
-        reset_spec = seed_manager.training_reset_spec()
+        reset_spec = reset_training_spec()
         obs, _ = envs[env_idx].reset(**reset_spec.as_kwargs())
         return obs
 
-    obs_batch = np.stack([reset_training_episode(env_idx) for env_idx in range(num_envs)], axis=0)
+    if env_pool is None:
+        obs_batch = np.stack([reset_training_episode(env_idx) for env_idx in range(num_envs)], axis=0)
+    else:
+        obs_batch = env_pool.reset_all([reset_training_spec() for _ in range(num_envs)])
     rollout_state = None
 
     eval_env = make_env(config)
@@ -143,16 +178,34 @@ def main() -> None:
     next_save_step = save_every
 
     while global_step < total_steps:
-        rollout = collect_rollout_parallel(
-            envs=envs,
-            reservoir=reservoir,
-            policy=policy,
-            obs_batch=obs_batch,
-            state=rollout_state,
-            rollout_steps=rollout_steps,
-            device=device,
-            reset_fn=reset_training_episode,
-        )
+        iter_start_time = time.perf_counter()
+        rollout_start_time = time.perf_counter()
+        if env_pool is None:
+            rollout = collect_rollout_parallel(
+                envs=envs,
+                reservoir=reservoir,
+                policy=policy,
+                obs_batch=obs_batch,
+                state=rollout_state,
+                rollout_steps=rollout_steps,
+                device=device,
+                reset_fn=reset_training_episode,
+            )
+        else:
+            rollout = collect_rollout_env_pool(
+                env_pool=env_pool,
+                continuous=env_is_continuous(env),
+                reservoir=reservoir,
+                policy=policy,
+                obs_batch=obs_batch,
+                state=rollout_state,
+                rollout_steps=rollout_steps,
+                device=device,
+                reset_spec_fn=lambda _env_idx: reset_training_spec(),
+            )
+        if device.type == 'cuda':
+            torch.cuda.synchronize(device)
+        rollout_seconds = time.perf_counter() - rollout_start_time
         obs_batch = rollout.last_obs
         rollout_state = rollout.last_state
 
@@ -161,19 +214,30 @@ def main() -> None:
         global_step += step_increment
         pbar.update(min(step_increment, total_steps - previous_step))
 
+        entropy_progress = min(1.0, global_step / max(1, entropy_anneal_steps))
+        entropy_coef = entropy_coef_start + entropy_progress * (entropy_coef_end - entropy_coef_start)
+
+        update_start_time = time.perf_counter()
         stats = ppo_update(
             policy=policy,
             optimizer=optimizer,
             rollout=rollout,
             gamma=float(config['training']['gamma']),
             gae_lambda=float(config['training']['gae_lambda']),
-            update_epochs=int(config['training']['update_epochs']),
-            minibatch_size=int(config['training']['minibatch_size']),
+            update_epochs=update_epochs,
+            minibatch_size=minibatch_size,
             clip_eps=float(config['agent']['clip_eps']),
             value_coef=float(config['agent']['value_coef']),
-            entropy_coef=float(config['agent']['entropy_coef']),
+            entropy_coef=entropy_coef,
             max_grad_norm=float(config['agent']['max_grad_norm']),
+            value_clip_eps=value_clip_eps,
+            target_kl=target_kl,
         )
+        if device.type == 'cuda':
+            torch.cuda.synchronize(device)
+        update_seconds = time.perf_counter() - update_start_time
+        iter_seconds = time.perf_counter() - iter_start_time
+        steps_per_second = step_increment / max(1e-9, iter_seconds)
 
         recent_returns.extend(rollout.episode_returns)
         if len(recent_returns) > 50:
@@ -185,7 +249,13 @@ def main() -> None:
                 'ret50': f'{mean_return:.2f}',
                 'loss': f'{stats.loss:.3f}',
                 'ent': f'{stats.entropy:.3f}',
+                'entc': f'{entropy_coef:.4f}',
+                'kl': f'{stats.approx_kl:.4f}',
+                'clip': f'{stats.clip_fraction:.2f}',
                 'best': f'{best_eval_return:.2f}',
+                'sps': f'{steps_per_second:.0f}',
+                'roll': f'{rollout_seconds:.2f}s',
+                'upd': f'{update_seconds:.2f}s',
             }
         )
 
@@ -287,8 +357,12 @@ def main() -> None:
 
     pbar.close()
     eval_env.close()
-    for env in envs:
+    if env_pool is not None:
+        env_pool.close()
         env.close()
+    else:
+        for env in envs:
+            env.close()
 
 
 if __name__ == '__main__':

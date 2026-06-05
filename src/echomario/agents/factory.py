@@ -20,10 +20,15 @@ def build_policy(config: dict, env, reservoir_dim: int) -> PolicyLike:
     kind = policy_kind(config)
 
     if kind == 'cnn':
+        agent_cfg = config.get('agent', {})
         screen_channels = len(getattr(env, 'SCREEN_CHANNEL_NAMES'))
         screen_height = int(getattr(env, 'height'))
         screen_width = int(getattr(env, 'camera_width'))
         state_dim = len(getattr(env, 'STATE_FEATURE_NAMES')) if bool(getattr(env, 'include_state_features', False)) else 0
+        cnn_channels_raw = agent_cfg.get('cnn_channels', [32, 64, 64])
+        cnn_channels = tuple(int(value) for value in cnn_channels_raw)
+        if len(cnn_channels) != 3:
+            raise ValueError('agent.cnn_channels must contain exactly three channel sizes')
         return TileCNNActorCritic(
             screen_channels=screen_channels,
             screen_height=screen_height,
@@ -31,10 +36,11 @@ def build_policy(config: dict, env, reservoir_dim: int) -> PolicyLike:
             state_dim=state_dim,
             num_actions=num_actions,
             continuous=continuous,
-            hidden_dim=int(config.get('agent', {}).get('hidden_dim', 256)),
-            log_std_init=float(config.get('agent', {}).get('log_std_init', -1.0)),
-            min_log_std=float(config.get('agent', {}).get('min_log_std', -3.0)),
-            max_log_std=float(config.get('agent', {}).get('max_log_std', 0.0)),
+            hidden_dim=int(agent_cfg.get('hidden_dim', 256)),
+            cnn_channels=cnn_channels,
+            log_std_init=float(agent_cfg.get('log_std_init', -1.0)),
+            min_log_std=float(agent_cfg.get('min_log_std', -3.0)),
+            max_log_std=float(agent_cfg.get('max_log_std', 0.0)),
         )
 
     return ReadoutActorCritic(

@@ -192,6 +192,18 @@ class ToyPlatformerEnv(gym.Env):
         enemy_speed: float = 0.04,
         observation_mode: str = 'full_screen',
         include_state_features: bool = True,
+        progress_reward_scale: float = 1.25,
+        step_penalty: float = -0.002,
+        coin_reward: float = 0.4,
+        item_reward: float = 1.5,
+        stomp_reward: float = 2.0,
+        goal_reward: float = 45.0,
+        death_penalty: float = -12.0,
+        safe_landing_reward: float = 0.0,
+        gap_clear_reward: float = 0.0,
+        enemy_pass_reward: float = 0.0,
+        checkpoint_reward: float = 0.0,
+        checkpoint_interval: int = 25,
     ):
         super().__init__()
 
@@ -227,6 +239,18 @@ class ToyPlatformerEnv(gym.Env):
         self.enemy_speed = float(enemy_speed)
         self.observation_mode = str(observation_mode)
         self.include_state_features = bool(include_state_features)
+        self.progress_reward_scale = float(progress_reward_scale)
+        self.step_penalty = float(step_penalty)
+        self.coin_reward = float(coin_reward)
+        self.item_reward = float(item_reward)
+        self.stomp_reward = float(stomp_reward)
+        self.goal_reward = float(goal_reward)
+        self.death_penalty = float(death_penalty)
+        self.safe_landing_reward = float(safe_landing_reward)
+        self.gap_clear_reward = float(gap_clear_reward)
+        self.enemy_pass_reward = float(enemy_pass_reward)
+        self.checkpoint_reward = float(checkpoint_reward)
+        self.checkpoint_interval = int(checkpoint_interval)
 
         self.stagnation_timeout = int(stagnation_timeout)
         self.stagnation_epsilon = float(stagnation_epsilon)
@@ -264,6 +288,9 @@ class ToyPlatformerEnv(gym.Env):
         self.question_blocks: list[QuestionBlock] = []
         self.items: list[Item] = []
         self._static_screen_grid = np.zeros((self.height, self.width, len(self.SCREEN_CHANNEL_NAMES)), dtype=np.float32)
+        self.cleared_gap_indices: set[int] = set()
+        self.passed_enemy_ids: set[int] = set()
+        self.next_checkpoint_x = float(self.checkpoint_interval)
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
@@ -278,6 +305,9 @@ class ToyPlatformerEnv(gym.Env):
         self.t = 0
         self.max_x = self.player.x
         self.stagnation_counter = 0
+        self.cleared_gap_indices = set()
+        self.passed_enemy_ids = set()
+        self.next_checkpoint_x = float(self.checkpoint_interval)
         self.goal_x = self.width - 5
         self._generate_level()
         self.player.y = self._surface_top_below(self.player.x, 4.0) or 1.0
@@ -655,6 +685,38 @@ class ToyPlatformerEnv(gym.Env):
         self.player.score += 10 * coin_hits + 200 * item_hits
         return coin_hits, item_hits
 
+    def _gap_clear_count(self, old_x: float, new_x: float, y: float) -> int:
+        if y < 0.8:
+            return 0
+        count = 0
+        for gap_idx, (_a, b) in enumerate(self.gaps):
+            if gap_idx in self.cleared_gap_indices:
+                continue
+            if old_x <= b + 0.2 < new_x:
+                self.cleared_gap_indices.add(gap_idx)
+                count += 1
+        return count
+
+    def _enemy_pass_count(self, old_x: float, new_x: float) -> int:
+        count = 0
+        for enemy in self.enemies:
+            enemy_id = id(enemy)
+            if enemy_id in self.passed_enemy_ids:
+                continue
+            if old_x <= enemy.x < new_x - 0.5:
+                self.passed_enemy_ids.add(enemy_id)
+                count += 1
+        return count
+
+    def _checkpoint_count(self) -> int:
+        if self.checkpoint_interval <= 0 or self.checkpoint_reward == 0.0:
+            return 0
+        count = 0
+        while self.max_x >= self.next_checkpoint_x:
+            count += 1
+            self.next_checkpoint_x += float(self.checkpoint_interval)
+        return count
+
     def _find_enemy_collision(self) -> Enemy | None:
         px = self.player.x
         py = self.player.y
@@ -666,6 +728,9 @@ class ToyPlatformerEnv(gym.Env):
     def step(self, action):
         self.t += 1
         p = self.player
+        was_on_ground = p.on_ground
+        previous_coin_count = p.collected_coins
+        previous_item_count = p.collected_items
 
         action = np.asarray(action, dtype=np.float32).reshape(-1)
         if action.shape[0] != 3:
@@ -757,11 +822,17 @@ class ToyPlatformerEnv(gym.Env):
             else:
                 hit_enemy = True
 
-        coin_hits, item_hits = self._collect_objects()
+        self._collect_objects()
 
         prev_max_x = self.max_x
         self.max_x = max(self.max_x, p.x)
         progress_reward = self.max_x - prev_max_x
+        coin_delta = self.player.collected_coins - previous_coin_count
+        item_delta = self.player.collected_items - previous_item_count
+        safe_landing = bool(landed and not was_on_ground and not fell and not hit_enemy)
+        gap_clear_count = self._gap_clear_count(old_x, p.x, p.y)
+        enemy_pass_count = 0 if hit_enemy else self._enemy_pass_count(old_x, p.x)
+        checkpoint_count = self._checkpoint_count()
 
         if progress_reward > self.stagnation_epsilon:
             self.stagnation_counter = 0
@@ -769,18 +840,25 @@ class ToyPlatformerEnv(gym.Env):
             self.stagnation_counter += 1
         stagnated = self.stagnation_counter >= self.stagnation_timeout
 
-        reward = 1.25 * progress_reward - 0.002
-        reward += 0.4 * coin_hits
-        reward += 1.5 * item_hits
+        reward_components = {
+            'progress': self.progress_reward_scale * progress_reward,
+            'step': self.step_penalty,
+            'coin': self.coin_reward * coin_delta,
+            'item': self.item_reward * item_delta,
+            'stomp': self.stomp_reward if stomped_enemy else 0.0,
+            'safe_landing': self.safe_landing_reward if safe_landing else 0.0,
+            'gap_clear': self.gap_clear_reward * gap_clear_count,
+            'enemy_pass': self.enemy_pass_reward * enemy_pass_count,
+            'checkpoint': self.checkpoint_reward * checkpoint_count,
+            'goal': self.goal_reward if reached_goal else 0.0,
+            'death': self.death_penalty if fell or hit_enemy else 0.0,
+            'stagnation': self.stagnation_penalty if stagnated else 0.0,
+        }
+        reward = sum(reward_components.values())
         if stomped_enemy:
-            reward += 2.0
+            self.passed_enemy_ids.add(id(enemy))
         if reached_goal:
-            reward += 45.0
             p.score += 1000
-        if fell or hit_enemy:
-            reward -= 12.0
-        if stagnated:
-            reward += self.stagnation_penalty
 
         terminated = bool(fell or hit_enemy or reached_goal or stagnated)
         truncated = self.t >= self.max_steps
@@ -795,6 +873,11 @@ class ToyPlatformerEnv(gym.Env):
             'fell': fell,
             'hit_enemy': hit_enemy,
             'stomped_enemy': stomped_enemy,
+            'safe_landing': safe_landing,
+            'gap_clear_count': gap_clear_count,
+            'enemy_pass_count': enemy_pass_count,
+            'checkpoint_count': checkpoint_count,
+            'reward_components': reward_components,
             'stagnated': stagnated,
             'stagnation_counter': self.stagnation_counter,
             'move_axis': move_axis,

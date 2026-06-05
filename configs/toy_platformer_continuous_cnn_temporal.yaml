@@ -1,5 +1,5 @@
 project:
-  name: toy_platformer_continuous_cnn
+  name: toy_platformer_continuous_cnn_temporal_shaped
   seed: 42
   device: cuda
 
@@ -8,11 +8,12 @@ env:
   randomize: true
   train_seed_mode: random
   eval_seed_start: 10000
-  num_eval_seeds: 20
+  num_eval_seeds: 50
 
   width: 220
   height: 18
   camera_width: 36
+  frame_stack: 4
   max_steps: 1400
   render_scale: 24
   observation_mode: full_screen
@@ -47,31 +48,50 @@ env:
   stagnation_epsilon: 0.05
   stagnation_penalty: -5.0
 
+  progress_reward_scale: 1.0
+  step_penalty: -0.004
+  coin_reward: 0.8
+  item_reward: 3.0
+  stomp_reward: 5.0
+  goal_reward: 80.0
+  death_penalty: -50.0
+  safe_landing_reward: 0.25
+  gap_clear_reward: 4.0
+  enemy_pass_reward: 1.5
+  checkpoint_reward: 2.0
+  checkpoint_interval: 20
+
 reservoir:
   type: none
 
 agent:
   model: cnn
-  hidden_dim: 256
-  lr: 0.0003
-  entropy_coef: 0.001
+  cnn_channels: [64, 128, 128]
+  hidden_dim: 1024
+  lr: 0.0002
+  entropy_coef: 0.0015
+  entropy_coef_end: 0.0002
+  entropy_anneal_steps: 10000000
   value_coef: 0.5
   clip_eps: 0.15
   max_grad_norm: 0.5
-  log_std_init: -1.0
+  log_std_init: -0.8
   min_log_std: -3.0
   max_log_std: 0.0
 
 training:
-  total_steps: 120000
-  rollout_steps: 2048
-  minibatch_size: 512
-  update_epochs: 4
-  gamma: 0.99
+  total_steps: 16000000
+  num_envs: 96
+  rollout_steps: 512
+  minibatch_size: 8192
+  update_epochs: 8
+  value_clip_eps: 0.2
+  target_kl: 0.03
+  gamma: 0.995
   gae_lambda: 0.95
-  save_every_steps: 20000
-  eval_every_steps: 10000
-  eval_episodes: 20
+  save_every_steps: 245760
+  eval_every_steps: 245760
+  eval_episodes: 50
 
 logging:
-  run_dir: runs/toy_platformer_continuous_cnn_quick
+  run_dir: runs/toy_platformer_continuous_cnn_temporal_shaped

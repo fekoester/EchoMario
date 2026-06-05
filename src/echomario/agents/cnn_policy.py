@@ -16,6 +16,7 @@ class TileCNNActorCritic(nn.Module):
         num_actions: int,
         continuous: bool = False,
         hidden_dim: int = 256,
+        cnn_channels: tuple[int, int, int] | None = None,
         log_std_init: float = -1.0,
         min_log_std: float = -3.0,
         max_log_std: float = 0.0,
@@ -30,14 +31,15 @@ class TileCNNActorCritic(nn.Module):
         self.num_actions = int(num_actions)
         self.min_log_std = float(min_log_std)
         self.max_log_std = float(max_log_std)
+        conv1, conv2, conv3 = cnn_channels or (32, 64, 64)
 
         self.screen_dim = self.screen_channels * self.screen_height * self.screen_width
         self.cnn = nn.Sequential(
-            nn.Conv2d(self.screen_channels, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(self.screen_channels, conv1, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(conv1, conv2, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(conv2, conv3, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((3, 5)),
             nn.Flatten(),

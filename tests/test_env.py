@@ -111,6 +111,53 @@ def test_stomp_enemy_defeats_it_and_awards_score():
     assert env.player.score >= 100
 
 
+def test_shaped_reward_reports_components_and_checkpoints():
+    env = ToyPlatformerEnv(
+        randomize=False,
+        seed=123,
+        progress_reward_scale=0.0,
+        step_penalty=0.0,
+        checkpoint_reward=3.0,
+        checkpoint_interval=3,
+    )
+    env.reset()
+    env.enemies = []
+    env.player.x = 2.95
+    env.max_x = 2.95
+    env.next_checkpoint_x = 3.0
+
+    _obs, reward, _terminated, _truncated, info = env.step(np.array([1.0, -1.0, 1.0], dtype=np.float32))
+
+    assert info['checkpoint_count'] == 1
+    assert info['reward_components']['checkpoint'] == 3.0
+    assert reward >= 3.0
+
+
+def test_gap_clear_shaped_reward_fires_once():
+    env = ToyPlatformerEnv(
+        randomize=False,
+        seed=123,
+        progress_reward_scale=0.0,
+        step_penalty=0.0,
+        gap_clear_reward=4.0,
+    )
+    env.reset()
+    env.gaps = [(3, 4)]
+    env.enemies = []
+    env.player.x = 4.1
+    env.player.y = 1.0
+    env.max_x = 4.1
+
+    env.player.vx = 1.0
+    _obs, reward, _terminated, _truncated, info = env.step(np.array([1.0, -1.0, 1.0], dtype=np.float32))
+    assert info['gap_clear_count'] == 1
+    assert info['reward_components']['gap_clear'] == 4.0
+    assert reward >= 4.0
+
+    _obs, _reward, _terminated, _truncated, info = env.step(np.array([1.0, -1.0, 1.0], dtype=np.float32))
+    assert info['gap_clear_count'] == 0
+
+
 def test_stagnation_termination():
     env = ToyPlatformerEnv(randomize=False, seed=123, stagnation_timeout=5, stagnation_epsilon=0.5)
     env.reset()

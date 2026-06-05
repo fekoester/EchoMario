@@ -14,6 +14,9 @@ class PPOStats:
     value_loss: float
     entropy: float
     approx_kl: float
+    clip_fraction: float
+    update_steps: int
+    stopped_early: bool
 
 
 def compute_gae(rollout: Rollout, gamma: float, gae_lambda: float) -> tuple[torch.Tensor, torch.Tensor]:
@@ -52,6 +55,8 @@ def ppo_update(
     value_coef: float,
     entropy_coef: float,
     max_grad_norm: float,
+    value_clip_eps: float = 0.0,
+    target_kl: float = 0.0,
 ) -> PPOStats:
     advantages, returns = compute_gae(rollout, gamma=gamma, gae_lambda=gae_lambda)
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -59,7 +64,10 @@ def ppo_update(
     n = rollout.states.shape[0]
     idx = torch.arange(n, device=rollout.states.device)
     old_log_probs = rollout.log_probs.reshape(-1)
+    old_values = rollout.values.reshape(-1)
     last_stats = None
+    update_steps = 0
+    stopped_early = False
 
     for _epoch in range(update_epochs):
         perm = idx[torch.randperm(n, device=rollout.states.device)]
@@ -75,7 +83,17 @@ def ppo_update(
             unclipped = ratio * mb_adv
             clipped = torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps) * mb_adv
             policy_loss = -torch.min(unclipped, clipped).mean()
-            value_loss = 0.5 * (new_values - returns[mb_idx]).pow(2).mean()
+            value_loss_unclipped = (new_values - returns[mb_idx]).pow(2)
+            if value_clip_eps > 0.0:
+                value_clipped = old_values[mb_idx] + torch.clamp(
+                    new_values - old_values[mb_idx],
+                    -value_clip_eps,
+                    value_clip_eps,
+                )
+                value_loss_clipped = (value_clipped - returns[mb_idx]).pow(2)
+                value_loss = 0.5 * torch.max(value_loss_unclipped, value_loss_clipped).mean()
+            else:
+                value_loss = 0.5 * value_loss_unclipped.mean()
             entropy_loss = entropy.mean()
             loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss
 
@@ -84,14 +102,29 @@ def ppo_update(
             torch.nn.utils.clip_grad_norm_(policy.parameters(), max_grad_norm)
             optimizer.step()
 
-            approx_kl = (old_log_probs[mb_idx] - new_log_probs).mean().detach().abs()
+            with torch.no_grad():
+                log_ratio_detached = log_ratio.detach()
+                approx_kl = ((log_ratio_detached.exp() - 1.0) - log_ratio_detached).mean()
+                clip_fraction = (
+                    (ratio.detach() - 1.0).abs() > clip_eps
+                ).float().mean()
+            update_steps += 1
             last_stats = PPOStats(
                 loss=float(loss.detach().cpu()),
                 policy_loss=float(policy_loss.detach().cpu()),
                 value_loss=float(value_loss.detach().cpu()),
                 entropy=float(entropy_loss.detach().cpu()),
                 approx_kl=float(approx_kl.cpu()),
+                clip_fraction=float(clip_fraction.cpu()),
+                update_steps=update_steps,
+                stopped_early=stopped_early,
             )
+            if target_kl > 0.0 and float(approx_kl.detach().cpu()) > target_kl:
+                stopped_early = True
+                last_stats.stopped_early = True
+                break
+        if stopped_early:
+            break
 
     assert last_stats is not None
     return last_stats

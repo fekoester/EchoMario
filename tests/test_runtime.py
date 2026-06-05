@@ -123,6 +123,35 @@ def test_rollout_runs_with_cnn_policy():
     assert rollout.states.shape[1] == env.observation_space.shape[0]
 
 
+def test_frame_stack_full_screen_observation_builds_cnn_policy():
+    config = {
+        'project': {'seed': 42},
+        'env': {
+            'name': 'toy_platformer',
+            'observation_mode': 'full_screen',
+            'include_state_features': True,
+            'frame_stack': 4,
+        },
+        'reservoir': {'type': 'none'},
+        'agent': {'model': 'cnn', 'hidden_dim': 64},
+    }
+    env = make_env(config)
+    obs, _ = env.reset()
+    expected_screen_dim = 4 * 10 * env.height * env.camera_width
+    expected_obs_dim = expected_screen_dim + len(env.STATE_FEATURE_NAMES)
+
+    assert obs.shape == (expected_obs_dim,)
+    assert env.observation_space.shape == (expected_obs_dim,)
+
+    reservoir = make_reservoir(config, input_dim=int(env.observation_space.shape[0]))
+    policy = build_policy(config, env, reservoir.cfg.size)
+    action, log_probs, _entropy, values = policy.get_action_and_value(torch.as_tensor(obs).unsqueeze(0))
+
+    assert action.shape == (1, 3)
+    assert log_probs.shape == (1,)
+    assert values.shape == (1,)
+
+
 def test_checkpoint_roundtrip_for_linear_baseline(tmp_path: Path):
     config = {
         'project': {'seed': 42, 'device': 'cpu'},
