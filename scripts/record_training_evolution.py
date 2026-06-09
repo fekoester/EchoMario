@@ -111,11 +111,6 @@ def load_policy_from_checkpoint(path: Path):
 
     continuous = isinstance(env.action_space, spaces.Box)
 
-    if continuous:
-        num_actions = int(env.action_space.shape[0])
-    else:
-        num_actions = int(env.action_space.n)
-
     input_labels = None
     if hasattr(env, "get_input_feature_names"):
         input_labels = env.get_input_feature_names()

@@ -9,9 +9,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
-from gymnasium import spaces
 
-from echomario.agents.factory import build_policy
+from echomario.agents.factory import build_policy as build_policy_from_config
 from echomario.envs.make_env import make_env
 from echomario.envs.reset import EpisodeSeedManager
 from echomario.reservoirs.esn import load_reservoir_from_state_dict
@@ -63,10 +62,9 @@ def collect_checkpoints(args) -> list[Path]:
     return deduped
 
 
-def build_policy(env, ckpt):
-    continuous = isinstance(env.action_space, spaces.Box)
+def load_policy_for_checkpoint(env, ckpt):
     reservoir = load_reservoir_from_state_dict(ckpt['reservoir_state'])
-    policy = build_policy(ckpt['config'], env, reservoir.cfg.size)
+    policy = build_policy_from_config(ckpt['config'], env, reservoir.cfg.size)
     policy.load_state_dict(ckpt['policy_state'])
     policy.eval()
     return reservoir, policy
@@ -136,7 +134,7 @@ def main() -> None:
         env = make_env(config)
         seed_manager = EpisodeSeedManager(config)
         reset_specs = seed_manager.evaluation_reset_specs()
-        reservoir, policy = build_policy(env, ckpt)
+        reservoir, policy = load_policy_for_checkpoint(env, ckpt)
 
         stats = evaluate_policy(
             env=env,

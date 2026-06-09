@@ -153,6 +153,9 @@ class ToyPlatformerEnv(gym.Env):
         'score_norm',
         'goal_dx',
         'time',
+        'gap_start_dx',
+        'gap_end_dx',
+        'bridge_ahead',
     ]
 
     def __init__(
@@ -204,6 +207,7 @@ class ToyPlatformerEnv(gym.Env):
         enemy_pass_reward: float = 0.0,
         checkpoint_reward: float = 0.0,
         checkpoint_interval: int = 25,
+        forced_gaps: list | None = None,
     ):
         super().__init__()
 
@@ -251,6 +255,7 @@ class ToyPlatformerEnv(gym.Env):
         self.enemy_pass_reward = float(enemy_pass_reward)
         self.checkpoint_reward = float(checkpoint_reward)
         self.checkpoint_interval = int(checkpoint_interval)
+        self.forced_gaps = self._parse_forced_gaps(forced_gaps)
 
         self.stagnation_timeout = int(stagnation_timeout)
         self.stagnation_epsilon = float(stagnation_epsilon)
@@ -266,6 +271,9 @@ class ToyPlatformerEnv(gym.Env):
             high=np.array([1.0, 1.0, 1.0], dtype=np.float32),
             dtype=np.float32,
         )
+        self.num_screen_channels = len(self.SCREEN_CHANNEL_NAMES)
+        self.screen_dim = self.height * self.camera_width * self.num_screen_channels
+        self.state_dim = len(self.STATE_FEATURE_NAMES) if self.include_state_features else 0
         self.screen_channel_index = {name: idx for idx, name in enumerate(self.SCREEN_CHANNEL_NAMES)}
         self.input_feature_names = self._build_input_feature_names()
         self.observation_space = spaces.Box(
@@ -287,7 +295,9 @@ class ToyPlatformerEnv(gym.Env):
         self.coins: list[Coin] = []
         self.question_blocks: list[QuestionBlock] = []
         self.items: list[Item] = []
-        self._static_screen_grid = np.zeros((self.height, self.width, len(self.SCREEN_CHANNEL_NAMES)), dtype=np.float32)
+        self._static_screen_grid = np.zeros((self.height, self.width, self.num_screen_channels), dtype=np.float32)
+        self._static_screen_views = np.zeros((self._camera_left_count(), self.screen_dim), dtype=np.float32)
+        self._screen_obs_buffer = np.zeros(self.screen_dim + self.state_dim, dtype=np.float32)
         self.cleared_gap_indices: set[int] = set()
         self.passed_enemy_ids: set[int] = set()
         self.next_checkpoint_x = float(self.checkpoint_interval)
@@ -332,7 +342,23 @@ class ToyPlatformerEnv(gym.Env):
         else:
             self._build_random_level()
 
+        self._apply_forced_gaps()
         self._rebuild_static_screen_grid()
+
+    def _parse_forced_gaps(self, forced_gaps: list | None) -> list[tuple[int, int]]:
+        parsed: list[tuple[int, int]] = []
+        for gap in forced_gaps or []:
+            if len(gap) != 2:
+                raise ValueError(f'forced_gaps entries must be [start, end], got {gap!r}')
+            start, end = int(gap[0]), int(gap[1])
+            if start > end:
+                raise ValueError(f'forced_gaps start must be <= end, got {gap!r}')
+            parsed.append((start, end))
+        return parsed
+
+    def _apply_forced_gaps(self) -> None:
+        for start, end in self.forced_gaps:
+            self._carve_gap(start, end)
 
     def _build_handcrafted_level(self) -> None:
         self._carve_gap(18, 20)
@@ -972,8 +998,18 @@ class ToyPlatformerEnv(gym.Env):
         return features
 
 
+    def _camera_left_count(self) -> int:
+        return max(1, self.width - self.camera_width + 1)
+
+    def _cache_static_screen_views(self) -> None:
+        views = np.empty((self._camera_left_count(), self.screen_dim), dtype=np.float32)
+        for left in range(views.shape[0]):
+            right = left + self.camera_width
+            views[left] = self._static_screen_grid[:, left:right, :].reshape(-1)
+        self._static_screen_views = views
+
     def _rebuild_static_screen_grid(self) -> None:
-        grid = np.zeros((self.height, self.width, len(self.SCREEN_CHANNEL_NAMES)), dtype=np.float32)
+        grid = np.zeros((self.height, self.width, self.num_screen_channels), dtype=np.float32)
         empty_idx = self.screen_channel_index['empty']
         grid[:, :, empty_idx] = 1.0
 
@@ -999,6 +1035,7 @@ class ToyPlatformerEnv(gym.Env):
             grid[:, goal_x, empty_idx] = 0.0
 
         self._static_screen_grid = grid
+        self._cache_static_screen_views()
 
     def _build_input_feature_names(self) -> list[str]:
         if self.observation_mode == 'engineered':
@@ -1060,66 +1097,58 @@ class ToyPlatformerEnv(gym.Env):
     def _screen_obs(self) -> np.ndarray:
         left, right = self.get_camera_bounds()
         channel_index = self.screen_channel_index
-        grid = self._static_screen_grid[:, left:right, :].copy()
+        screen = self._screen_obs_buffer[: self.screen_dim]
+        screen[:] = self._static_screen_views[left]
+
+        def set_dynamic_cell(world_x: int, world_y: int, channel: str) -> None:
+            if left <= world_x < right and 0 <= world_y < self.height:
+                screen_col = world_x - left
+                screen_row = self.height - 1 - world_y
+                base = (screen_row * self.camera_width + screen_col) * self.num_screen_channels
+                screen[base + channel_index[channel]] = 1.0
+                screen[base + channel_index['empty']] = 0.0
 
         for enemy in self.enemies:
             ex = int(round(enemy.x))
             ey = int(round(enemy.y))
-            if left <= ex < right and 0 <= ey < self.height:
-                screen_col = ex - left
-                screen_row = self.height - 1 - ey
-                grid[screen_row, screen_col, channel_index['enemy']] = 1.0
-                grid[screen_row, screen_col, channel_index['empty']] = 0.0
+            set_dynamic_cell(ex, ey, 'enemy')
 
         for coin in self.coins:
             if coin.collected:
                 continue
             cx = int(round(coin.x))
             cy = int(round(coin.y))
-            if left <= cx < right and 0 <= cy < self.height:
-                screen_col = cx - left
-                screen_row = self.height - 1 - cy
-                grid[screen_row, screen_col, channel_index['coin']] = 1.0
-                grid[screen_row, screen_col, channel_index['empty']] = 0.0
+            set_dynamic_cell(cx, cy, 'coin')
 
         for item in self.items:
             if item.collected:
                 continue
             ix = int(round(item.x))
             iy = int(round(item.y))
-            if left <= ix < right and 0 <= iy < self.height:
-                screen_col = ix - left
-                screen_row = self.height - 1 - iy
-                grid[screen_row, screen_col, channel_index['item']] = 1.0
-                grid[screen_row, screen_col, channel_index['empty']] = 0.0
+            set_dynamic_cell(ix, iy, 'item')
 
         px = int(round(self.player.x))
         py = int(round(self.player.y))
-        if left <= px < right and 0 <= py < self.height:
-            screen_col = px - left
-            screen_row = self.height - 1 - py
-            grid[screen_row, screen_col, channel_index['player']] = 1.0
-            grid[screen_row, screen_col, channel_index['empty']] = 0.0
+        set_dynamic_cell(px, py, 'player')
 
-        features = grid.reshape(-1).astype(np.float32, copy=False)
         if not self.include_state_features:
-            return features
+            return screen
 
         player_screen_x = (self.player.x - left) / max(1, self.camera_width - 1)
-        state = np.array(
-            [
-                player_screen_x,
-                self.player.y / max(1, self.height),
-                self.player.vx,
-                self.player.vy,
-                1.0 if self.player.on_ground else 0.0,
-                min(1.0, self.player.score / 2000.0),
-                (self.goal_x - self.player.x) / self.width,
-                self.t / self.max_steps,
-            ],
-            dtype=np.float32,
-        )
-        return np.concatenate((features, state)).astype(np.float32, copy=False)
+        gap_start_dx, gap_end_dx, bridge_ahead = self._gap_features()
+        state = self._screen_obs_buffer[self.screen_dim :]
+        state[0] = player_screen_x
+        state[1] = self.player.y / max(1, self.height)
+        state[2] = self.player.vx
+        state[3] = self.player.vy
+        state[4] = 1.0 if self.player.on_ground else 0.0
+        state[5] = min(1.0, self.player.score / 2000.0)
+        state[6] = (self.goal_x - self.player.x) / self.width
+        state[7] = self.t / self.max_steps
+        state[8] = gap_start_dx
+        state[9] = gap_end_dx
+        state[10] = bridge_ahead
+        return self._screen_obs_buffer
 
     def _obs(self) -> np.ndarray:
         if self.observation_mode == 'engineered':

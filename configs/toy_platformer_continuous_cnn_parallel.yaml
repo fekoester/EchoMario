@@ -65,6 +65,9 @@ agent:
 training:
   total_steps: 12000000
   num_envs: 128
+  rollout_workers: 128
+  env_start_method: fork
+  rollout_progress_interval: 16
   rollout_steps: 512
   minibatch_size: 8192
   update_epochs: 6
@@ -73,6 +76,7 @@ training:
   save_every_steps: 262144
   eval_every_steps: 262144
   eval_episodes: 20
+  eval_workers: 20
 
 logging:
   run_dir: runs/toy_platformer_continuous_cnn_parallel_gpu

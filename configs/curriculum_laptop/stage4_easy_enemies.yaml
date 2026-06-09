@@ -1,0 +1,104 @@
+project:
+  name: curriculum_laptop_stage4_easy_enemies
+  seed: 42
+  device: cuda
+
+curriculum:
+  success_threshold: 0.45
+
+env:
+  name: toy_platformer
+  randomize: true
+  train_seed_mode: random
+  eval_seed_start: 13000
+  num_eval_seeds: 48
+
+  width: 210
+  height: 18
+  camera_width: 36
+  frame_stack: 4
+  max_steps: 1300
+  render_scale: 24
+  observation_mode: full_screen
+  include_state_features: true
+
+  enable_gaps: true
+  enable_bridge_platforms: true
+  enable_upper_platforms: true
+  enable_moving_enemies: true
+  enable_coins: true
+  enable_question_blocks: true
+  enable_items: true
+
+  num_gaps: 8
+  num_bridge_gaps: 3
+  num_enemies: 8
+  num_coins: 32
+  num_question_blocks: 6
+  num_upper_platforms: 10
+  num_mid_platforms: 9
+
+  min_gap_width: 2
+  max_gap_width: 3
+  min_bridge_gap_width: 5
+  max_bridge_gap_width: 8
+  min_platform_width: 3
+  max_platform_width: 8
+  min_spacing: 9
+  enemy_speed: 0.03
+
+  stagnation_timeout: 160
+  stagnation_epsilon: 0.05
+  stagnation_penalty: -25.0
+
+  progress_reward_scale: 1.3
+  step_penalty: -0.003
+  coin_reward: 0.5
+  item_reward: 2.5
+  stomp_reward: 4.0
+  goal_reward: 100.0
+  death_penalty: -30.0
+  safe_landing_reward: 0.25
+  gap_clear_reward: 4.5
+  enemy_pass_reward: 2.0
+  checkpoint_reward: 3.0
+  checkpoint_interval: 20
+
+reservoir:
+  type: none
+
+agent:
+  model: cnn
+  cnn_channels: [48, 96, 96]
+  hidden_dim: 768
+  lr: 0.000075
+  entropy_coef: 0.0012
+  entropy_coef_end: 0.0004
+  entropy_anneal_steps: 30000000
+  value_coef: 0.5
+  clip_eps: 0.08
+  max_grad_norm: 0.5
+  log_std_init: -0.8
+  min_log_std: -3.0
+  max_log_std: 0.0
+
+training:
+  total_steps: 5000000
+  num_envs: 64
+  rollout_workers: 64
+  env_start_method: fork
+  rollout_progress_interval: 16
+  rollout_steps: 256
+  minibatch_size: 2048
+  update_epochs: 2
+  value_clip_eps: 0.2
+  target_kl: 0.004
+  gamma: 0.995
+  gae_lambda: 0.95
+  save_every_steps: 131072
+  eval_every_steps: 131072
+  eval_episodes: 48
+  eval_workers: 48
+
+logging:
+  run_dir: runs/curriculum_laptop/stage4_easy_enemies

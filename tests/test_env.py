@@ -68,6 +68,22 @@ def test_random_seed_reset_changes_layout():
     assert first_layout != second_layout
 
 
+def test_forced_gaps_are_added_to_random_levels():
+    env = ToyPlatformerEnv(
+        randomize=True,
+        seed=123,
+        enable_gaps=False,
+        forced_gaps=[[12, 12], [20, 21]],
+    )
+    env.reset()
+
+    assert (12, 12) in env.gaps
+    assert (20, 21) in env.gaps
+    assert not env._is_solid_tile(12, 0)
+    assert not env._is_solid_tile(20, 0)
+    assert not env._is_solid_tile(21, 0)
+
+
 def test_continuous_action_manual_right_jump():
     env = ToyPlatformerEnv(randomize=False, seed=123)
     obs, _ = env.reset()

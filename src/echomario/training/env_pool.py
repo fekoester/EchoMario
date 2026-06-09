@@ -35,6 +35,10 @@ class SubprocEnvPool:
         if self.num_envs < 1:
             raise ValueError('num_envs must be at least 1')
 
+        probe_env = make_env(config)
+        self.action_shape = tuple(getattr(probe_env.action_space, 'shape', ()))
+        probe_env.close()
+
         self.ctx: BaseContext = get_context(start_method)
         self.parent_conns: list[connection.Connection] = []
         self.processes: list[Process] = []
@@ -69,6 +73,22 @@ class SubprocEnvPool:
         for conn, action in zip(self.parent_conns, actions, strict=True):
             conn.send(('step', action))
         return [conn.recv() for conn in self.parent_conns]
+
+    def step_at(
+        self,
+        env_indices: np.ndarray,
+        actions: np.ndarray,
+    ) -> list[tuple[int, tuple[np.ndarray, float, bool, bool, dict]]]:
+        env_indices = np.asarray(env_indices, dtype=np.int64)
+        actions = np.asarray(actions)
+        if env_indices.shape[0] != actions.shape[0]:
+            raise ValueError(
+                f'Expected one action per env index, got {env_indices.shape[0]} indices '
+                f'and {actions.shape[0]} actions'
+            )
+        for env_idx, action in zip(env_indices, actions, strict=True):
+            self.parent_conns[int(env_idx)].send(('step', action))
+        return [(int(env_idx), self.parent_conns[int(env_idx)].recv()) for env_idx in env_indices]
 
     def close(self) -> None:
         if self.closed:

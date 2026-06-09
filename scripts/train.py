@@ -16,11 +16,16 @@ from echomario.agents.factory import PolicyLike, build_policy
 from echomario.envs.make_env import make_env
 from echomario.envs.reset import EpisodeSeedManager
 from echomario.reservoirs.esn import ReservoirLike, make_reservoir
-from echomario.training.evaluate import evaluate_policy
+from echomario.training.evaluate import evaluate_policy, evaluate_policy_env_pool
 from echomario.training.env_pool import SubprocEnvPool
 from echomario.training.ppo import ppo_update
-from echomario.training.rollout import collect_rollout_env_pool, collect_rollout_parallel, env_is_continuous
-from echomario.utils.checkpoint import save_checkpoint
+from echomario.training.rollout import (
+    collect_rollout_env_pool,
+    collect_rollout_parallel,
+    env_is_continuous,
+    reservoir_is_identity,
+)
+from echomario.utils.checkpoint import load_checkpoint, save_checkpoint
 from echomario.utils.config import load_config
 from echomario.utils.seeding import set_seed
 
@@ -28,6 +33,7 @@ from echomario.utils.seeding import set_seed
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True)
+    parser.add_argument('--checkpoint', type=str, default=None)
     return parser.parse_args()
 
 
@@ -95,6 +101,10 @@ def main() -> None:
     reservoir = make_reservoir(config, input_dim=int(env.observation_space.shape[0]))
     reservoir.reset(batch_size=num_envs)
     policy = build_policy(config, env, reservoir.cfg.size).to(device)
+    if args.checkpoint is not None:
+        checkpoint = load_checkpoint(args.checkpoint, map_location=str(device))
+        policy.load_state_dict(checkpoint['policy_state'])
+        print(f"loaded policy weights from checkpoint: {args.checkpoint}")
     optimizer = optim.Adam(policy.parameters(), lr=float(config['agent']['lr']))
 
     run_dir = Path(config['logging']['run_dir'])
@@ -105,11 +115,15 @@ def main() -> None:
 
     eval_jsonl_path = run_dir / 'eval_history.jsonl'
     eval_csv_path = run_dir / 'eval_history.csv'
+    eval_jsonl_path.unlink(missing_ok=True)
+    eval_csv_path.unlink(missing_ok=True)
 
     total_steps = int(config['training']['total_steps'])
     rollout_steps = int(config['training']['rollout_steps'])
     save_every = int(config['training'].get('save_every_steps', 25000))
     eval_every = int(config['training'].get('eval_every_steps', 25000))
+    eval_workers = int(config['training'].get('eval_workers', 0))
+    rollout_progress_interval = int(config['training'].get('rollout_progress_interval', 16))
     minibatch_size = int(config['training']['minibatch_size'])
     update_epochs = int(config['training']['update_epochs'])
     value_clip_eps = float(config['training'].get('value_clip_eps', 0.0))
@@ -117,6 +131,8 @@ def main() -> None:
     entropy_coef_start = float(config['agent']['entropy_coef'])
     entropy_coef_end = float(config['agent'].get('entropy_coef_end', entropy_coef_start))
     entropy_anneal_steps = int(config['agent'].get('entropy_anneal_steps', total_steps))
+    success_threshold = float(config.get('curriculum', {}).get('success_threshold', 0.0))
+    stop_on_success = bool(config.get('curriculum', {}).get('stop_on_success', True))
 
     print(
         'training setup: '
@@ -142,8 +158,17 @@ def main() -> None:
     eval_env = make_env(config)
     eval_reservoir = make_reservoir(config, input_dim=int(eval_env.observation_space.shape[0]))
     eval_reset_specs = seed_manager.evaluation_reset_specs()
+    if eval_workers <= 0 and reservoir_is_identity(eval_reservoir):
+        eval_workers = len(eval_reset_specs)
+    if eval_workers not in {0, len(eval_reset_specs)}:
+        raise ValueError('training.eval_workers must be 0 or equal to env.num_eval_seeds')
+    eval_env_pool = None
+    if eval_workers > 0:
+        start_method = str(config['training'].get('env_start_method', 'spawn'))
+        eval_env_pool = SubprocEnvPool(config, num_envs=eval_workers, start_method=start_method)
 
     global_step = 0
+    stop_training = False
     recent_returns: list[float] = []
     best_eval_return = float('-inf')
     eval_history: list[dict[str, float | int]] = []
@@ -180,6 +205,16 @@ def main() -> None:
     while global_step < total_steps:
         iter_start_time = time.perf_counter()
         rollout_start_time = time.perf_counter()
+        progress_during_rollout = 0
+
+        def update_rollout_progress(step_count: int) -> None:
+            nonlocal progress_during_rollout
+            step_count = min(step_count, total_steps - (global_step + progress_during_rollout))
+            if step_count <= 0:
+                return
+            progress_during_rollout += step_count
+            pbar.update(step_count)
+
         if env_pool is None:
             rollout = collect_rollout_parallel(
                 envs=envs,
@@ -190,6 +225,8 @@ def main() -> None:
                 rollout_steps=rollout_steps,
                 device=device,
                 reset_fn=reset_training_episode,
+                progress_fn=update_rollout_progress,
+                progress_interval=rollout_progress_interval,
             )
         else:
             rollout = collect_rollout_env_pool(
@@ -202,6 +239,8 @@ def main() -> None:
                 rollout_steps=rollout_steps,
                 device=device,
                 reset_spec_fn=lambda _env_idx: reset_training_spec(),
+                progress_fn=update_rollout_progress,
+                progress_interval=rollout_progress_interval,
             )
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
@@ -212,7 +251,9 @@ def main() -> None:
         step_increment = int(rollout.rewards.numel())
         previous_step = global_step
         global_step += step_increment
-        pbar.update(min(step_increment, total_steps - previous_step))
+        remaining_progress = min(step_increment, total_steps - previous_step) - progress_during_rollout
+        if remaining_progress > 0:
+            pbar.update(remaining_progress)
 
         entropy_progress = min(1.0, global_step / max(1, entropy_anneal_steps))
         entropy_coef = entropy_coef_start + entropy_progress * (entropy_coef_end - entropy_coef_start)
@@ -244,6 +285,7 @@ def main() -> None:
             recent_returns = recent_returns[-50:]
 
         mean_return = sum(recent_returns) / max(1, len(recent_returns))
+        rollout_timings = rollout.timings
         pbar.set_postfix(
             {
                 'ret50': f'{mean_return:.2f}',
@@ -256,20 +298,36 @@ def main() -> None:
                 'sps': f'{steps_per_second:.0f}',
                 'roll': f'{rollout_seconds:.2f}s',
                 'upd': f'{update_seconds:.2f}s',
+                'pol': f"{rollout_timings.get('policy', 0.0):.2f}s",
+                'env': f"{rollout_timings.get('env', 0.0):.2f}s",
+                'store': f"{rollout_timings.get('store', 0.0):.2f}s",
             }
         )
+        del rollout
 
         while global_step >= next_eval_step:
-            eval_stats = evaluate_policy(
-                env=eval_env,
-                reservoir=eval_reservoir,
-                policy=policy,
-                episodes=len(eval_reset_specs),
-                reset_specs=eval_reset_specs,
-                device=device,
-            )
+            eval_start_time = time.perf_counter()
+            if eval_env_pool is not None:
+                eval_stats = evaluate_policy_env_pool(
+                    env_pool=eval_env_pool,
+                    continuous=env_is_continuous(eval_env),
+                    reservoir=eval_reservoir,
+                    policy=policy,
+                    reset_specs=eval_reset_specs,
+                    device=device,
+                )
+            else:
+                eval_stats = evaluate_policy(
+                    env=eval_env,
+                    reservoir=eval_reservoir,
+                    policy=policy,
+                    episodes=len(eval_reset_specs),
+                    reset_specs=eval_reset_specs,
+                    device=device,
+                )
+            eval_seconds = time.perf_counter() - eval_start_time
 
-            print(f"\nstep={global_step} eval={eval_stats}")
+            print(f"\nstep={global_step} eval_seconds={eval_seconds:.2f} eval={eval_stats}")
 
             eval_record = {'step': global_step, **eval_stats}
             eval_history.append(eval_record)
@@ -310,7 +368,21 @@ def main() -> None:
                     },
                 )
                 print(f"new best checkpoint saved: {run_dir / 'best.pt'}")
+            if (
+                stop_on_success
+                and success_threshold > 0.0
+                and float(eval_stats.get('eval_success_rate', 0.0)) >= success_threshold
+            ):
+                stop_training = True
+                print(
+                    f"curriculum threshold reached: "
+                    f"{eval_stats['eval_success_rate']:.3f} >= {success_threshold:.3f}"
+                )
+                break
             next_eval_step += eval_every
+
+        if stop_training:
+            break
 
         while global_step >= next_save_step:
             save_policy_checkpoint(
@@ -357,6 +429,8 @@ def main() -> None:
 
     pbar.close()
     eval_env.close()
+    if eval_env_pool is not None:
+        eval_env_pool.close()
     if env_pool is not None:
         env_pool.close()
         env.close()

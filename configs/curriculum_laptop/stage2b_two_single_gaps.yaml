@@ -1,0 +1,103 @@
+project:
+  name: curriculum_laptop_stage2b_two_single_gaps
+  seed: 42
+  device: cuda
+
+curriculum:
+  success_threshold: 0.85
+
+env:
+  name: toy_platformer
+  randomize: true
+  train_seed_mode: random
+  eval_seed_start: 11500
+  num_eval_seeds: 32
+
+  width: 165
+  height: 18
+  camera_width: 36
+  frame_stack: 4
+  max_steps: 950
+  render_scale: 24
+  observation_mode: full_screen
+  include_state_features: true
+
+  enable_gaps: true
+  enable_bridge_platforms: false
+  enable_upper_platforms: false
+  enable_moving_enemies: false
+  enable_coins: false
+  enable_question_blocks: false
+  enable_items: false
+
+  forced_gaps:
+    - [46, 46]
+    - [86, 86]
+
+  num_gaps: 0
+  num_bridge_gaps: 0
+  num_enemies: 0
+  num_coins: 0
+  num_question_blocks: 0
+  num_upper_platforms: 0
+  num_mid_platforms: 0
+
+  min_gap_width: 1
+  max_gap_width: 2
+  min_spacing: 18
+
+  stagnation_timeout: 120
+  stagnation_epsilon: 0.05
+  stagnation_penalty: -20.0
+
+  progress_reward_scale: 1.5
+  step_penalty: -0.0025
+  coin_reward: 0.0
+  item_reward: 0.0
+  stomp_reward: 0.0
+  goal_reward: 100.0
+  death_penalty: -25.0
+  safe_landing_reward: 0.8
+  gap_clear_reward: 8.0
+  enemy_pass_reward: 0.0
+  checkpoint_reward: 3.0
+  checkpoint_interval: 20
+
+reservoir:
+  type: none
+
+agent:
+  model: cnn
+  cnn_channels: [48, 96, 96]
+  hidden_dim: 768
+  lr: 0.0001
+  entropy_coef: 0.0018
+  entropy_coef_end: 0.0005
+  entropy_anneal_steps: 22000000
+  value_coef: 0.5
+  clip_eps: 0.08
+  max_grad_norm: 0.5
+  log_std_init: -0.65
+  min_log_std: -3.0
+  max_log_std: 0.0
+
+training:
+  total_steps: 1500000
+  num_envs: 64
+  rollout_workers: 64
+  env_start_method: fork
+  rollout_progress_interval: 16
+  rollout_steps: 256
+  minibatch_size: 2048
+  update_epochs: 2
+  value_clip_eps: 0.2
+  target_kl: 0.005
+  gamma: 0.995
+  gae_lambda: 0.95
+  save_every_steps: 131072
+  eval_every_steps: 131072
+  eval_episodes: 32
+  eval_workers: 32
+
+logging:
+  run_dir: runs/curriculum_laptop/stage2b_two_single_gaps
