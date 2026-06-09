@@ -11,6 +11,54 @@ from gymnasium import spaces
 from echomario.envs.toy_platformer_env import ToyPlatformerEnv
 
 
+class DiscreteToyActionWrapper(gym.Wrapper):
+    ACTIONS = (
+        (0.0, -1.0, -1.0),   # idle
+        (1.0, -1.0, -1.0),   # right
+        (1.0, -1.0, 1.0),    # right + run
+        (0.0, 1.0, -1.0),    # jump
+        (1.0, 1.0, -1.0),    # right + jump
+        (1.0, 1.0, 1.0),     # right + run + jump
+        (-1.0, -1.0, -1.0),  # left
+        (-1.0, 1.0, -1.0),   # left + jump
+    )
+    ACTION_NAMES = (
+        'idle',
+        'right',
+        'right_run',
+        'jump',
+        'right_jump',
+        'right_run_jump',
+        'left',
+        'left_jump',
+    )
+
+    def __init__(self, env: ToyPlatformerEnv):
+        super().__init__(env)
+        self.action_space = spaces.Discrete(len(self.ACTIONS))
+        self.ACTION_NAMES = list(self.ACTION_NAMES)
+        self.observation_mode = str(env.observation_mode)
+        self.height = int(env.height)
+        self.camera_width = int(env.camera_width)
+        self.include_state_features = bool(env.include_state_features)
+        self.SCREEN_CHANNEL_NAMES = list(env.SCREEN_CHANNEL_NAMES)
+        self.STATE_FEATURE_NAMES = list(env.STATE_FEATURE_NAMES)
+        self.input_feature_names = list(env.get_input_feature_names())
+
+    def step(self, action):
+        action_idx = int(action)
+        if not 0 <= action_idx < len(self.ACTIONS):
+            raise ValueError(f'Invalid discrete action {action_idx}')
+        continuous_action = np.asarray(self.ACTIONS[action_idx], dtype=np.float32)
+        obs, reward, terminated, truncated, info = self.env.step(continuous_action)
+        info['discrete_action'] = action_idx
+        info['discrete_action_name'] = self.ACTION_NAMES[action_idx]
+        return obs, reward, terminated, truncated, info
+
+    def get_input_feature_names(self) -> list[str]:
+        return list(self.input_feature_names)
+
+
 class FullScreenFrameStack(gym.Wrapper):
     def __init__(self, env: ToyPlatformerEnv, num_frames: int):
         super().__init__(env)
@@ -93,12 +141,23 @@ def make_env(config: dict[str, Any]) -> gym.Env:
         signature = inspect.signature(ToyPlatformerEnv.__init__)
         kwargs: dict[str, Any] = {}
         for key, value in env_cfg.items():
-            if key in {'name', 'train_seed_mode', 'eval_seed_start', 'num_eval_seeds', 'frame_stack'}:
+            if key in {
+                'name',
+                'train_seed_mode',
+                'eval_seed_start',
+                'num_eval_seeds',
+                'frame_stack',
+                'action_mode',
+                'discrete_actions',
+            }:
                 continue
             if key in signature.parameters:
                 kwargs[key] = value
         kwargs.setdefault('seed', int(config['project'].get('seed', 42)))
         env = ToyPlatformerEnv(**kwargs)
+        action_mode = str(env_cfg.get('action_mode', 'continuous'))
+        if bool(env_cfg.get('discrete_actions', False)) or action_mode == 'discrete_basic':
+            env = DiscreteToyActionWrapper(env)
         frame_stack = int(env_cfg.get('frame_stack', 1))
         if frame_stack > 1:
             return FullScreenFrameStack(env, frame_stack)

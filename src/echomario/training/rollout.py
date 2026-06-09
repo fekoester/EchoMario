@@ -51,6 +51,8 @@ def collect_rollout_parallel(
     state: np.ndarray | None = None,
     progress_fn: Callable[[int], None] | None = None,
     progress_interval: int = 0,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.bfloat16,
 ) -> Rollout:
     if not envs:
         raise ValueError('envs must contain at least one environment')
@@ -98,7 +100,11 @@ def collect_rollout_parallel(
 
         policy_start = time.perf_counter()
         with torch.no_grad():
-            action, log_prob, _, value = policy.get_action_and_value(x)
+            with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=use_amp and device.type == 'cuda'):
+                action, log_prob, _, value = policy.get_action_and_value(x)
+        action = action.float()
+        log_prob = log_prob.float()
+        value = value.float()
 
         if continuous:
             action_np = action.detach().cpu().numpy().astype(np.float32)
@@ -156,7 +162,8 @@ def collect_rollout_parallel(
         last_state = current_state
     x = torch.as_tensor(last_state, dtype=torch.float32, device=device)
     with torch.no_grad():
-        _, last_value = policy.forward(x)
+        with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=use_amp and device.type == 'cuda'):
+            _, last_value = policy.forward(x)
     timings['bootstrap'] += time.perf_counter() - bootstrap_start
 
     return Rollout(
@@ -188,6 +195,8 @@ def collect_rollout_env_pool(
     state: np.ndarray | None = None,
     progress_fn: Callable[[int], None] | None = None,
     progress_interval: int = 0,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.bfloat16,
 ) -> Rollout:
     num_envs = env_pool.num_envs
     obs_batch = np.asarray(obs_batch, dtype=np.float32)
@@ -231,7 +240,11 @@ def collect_rollout_env_pool(
 
         policy_start = time.perf_counter()
         with torch.no_grad():
-            action, log_prob, _, value = policy.get_action_and_value(x)
+            with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=use_amp and device.type == 'cuda'):
+                action, log_prob, _, value = policy.get_action_and_value(x)
+        action = action.float()
+        log_prob = log_prob.float()
+        value = value.float()
 
         if continuous:
             action_np = action.detach().cpu().numpy().astype(np.float32)
@@ -285,7 +298,8 @@ def collect_rollout_env_pool(
         last_state = current_state
     x = torch.as_tensor(last_state, dtype=torch.float32, device=device)
     with torch.no_grad():
-        _, last_value = policy.forward(x)
+        with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=use_amp and device.type == 'cuda'):
+            _, last_value = policy.forward(x)
     timings['bootstrap'] += time.perf_counter() - bootstrap_start
 
     return Rollout(
@@ -314,6 +328,8 @@ def collect_rollout(
     device: torch.device,
     reset_fn: Callable[[], np.ndarray],
     state: np.ndarray | None = None,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.bfloat16,
 ) -> Rollout:
     rollout = collect_rollout_parallel(
         envs=[env],
@@ -324,6 +340,8 @@ def collect_rollout(
         device=device,
         reset_fn=lambda _env_idx: reset_fn(),
         state=None if state is None else np.asarray(state, dtype=np.float32).reshape(1, -1),
+        use_amp=use_amp,
+        amp_dtype=amp_dtype,
     )
     rollout.last_obs = rollout.last_obs[0].copy()
     rollout.last_state = rollout.last_state[0].copy()

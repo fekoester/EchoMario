@@ -21,6 +21,7 @@ env:
   render_scale: 24
   observation_mode: full_screen
   include_state_features: true
+  action_mode: discrete_basic
 
   enable_gaps: true
   enable_bridge_platforms: false
@@ -59,6 +60,10 @@ env:
   death_penalty: -35.0
   safe_landing_reward: 1.2
   gap_clear_reward: 12.0
+  gap_jump_reward: 2.5
+  gap_jump_lookahead: 6.0
+  gap_jump_hold_reward: 0.08
+  gap_jump_hold_lookahead: 6.0
   enemy_pass_reward: 0.0
   checkpoint_reward: 3.0
   checkpoint_interval: 20
@@ -83,13 +88,13 @@ agent:
 
 training:
   total_steps: 4000000
-  num_envs: 64
-  rollout_workers: 64
+  num_envs: 128
+  rollout_workers: 128
   env_start_method: fork
   rollout_progress_interval: 16
-  rollout_steps: 256
+  rollout_steps: 128
   minibatch_size: 2048
-  update_epochs: 1
+  update_epochs: 2
   value_clip_eps: 0.2
   target_kl: 0.005
   gamma: 0.995

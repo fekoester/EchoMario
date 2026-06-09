@@ -204,6 +204,10 @@ class ToyPlatformerEnv(gym.Env):
         death_penalty: float = -12.0,
         safe_landing_reward: float = 0.0,
         gap_clear_reward: float = 0.0,
+        gap_jump_reward: float = 0.0,
+        gap_jump_lookahead: float = 5.0,
+        gap_jump_hold_reward: float = 0.0,
+        gap_jump_hold_lookahead: float = 5.0,
         enemy_pass_reward: float = 0.0,
         checkpoint_reward: float = 0.0,
         checkpoint_interval: int = 25,
@@ -252,6 +256,10 @@ class ToyPlatformerEnv(gym.Env):
         self.death_penalty = float(death_penalty)
         self.safe_landing_reward = float(safe_landing_reward)
         self.gap_clear_reward = float(gap_clear_reward)
+        self.gap_jump_reward = float(gap_jump_reward)
+        self.gap_jump_lookahead = float(gap_jump_lookahead)
+        self.gap_jump_hold_reward = float(gap_jump_hold_reward)
+        self.gap_jump_hold_lookahead = float(gap_jump_hold_lookahead)
         self.enemy_pass_reward = float(enemy_pass_reward)
         self.checkpoint_reward = float(checkpoint_reward)
         self.checkpoint_interval = int(checkpoint_interval)
@@ -723,6 +731,16 @@ class ToyPlatformerEnv(gym.Env):
                 count += 1
         return count
 
+    def _near_uncleared_gap(self, x: float, lookahead: float) -> bool:
+        for gap_idx, (a, b) in enumerate(self.gaps):
+            if gap_idx in self.cleared_gap_indices:
+                continue
+            if b < x - 1.0:
+                continue
+            if -0.5 <= float(a - x) <= lookahead:
+                return True
+        return False
+
     def _enemy_pass_count(self, old_x: float, new_x: float) -> int:
         count = 0
         for enemy in self.enemies:
@@ -790,7 +808,8 @@ class ToyPlatformerEnv(gym.Env):
         else:
             p.jump_hold_frames = 0
 
-        if jump_pressed and p.on_ground:
+        jump_started = bool(jump_pressed and p.on_ground)
+        if jump_started:
             p.vy = 0.46
             p.on_ground = False
             p.jump_hold_frames = 1
@@ -857,6 +876,13 @@ class ToyPlatformerEnv(gym.Env):
         item_delta = self.player.collected_items - previous_item_count
         safe_landing = bool(landed and not was_on_ground and not fell and not hit_enemy)
         gap_clear_count = self._gap_clear_count(old_x, p.x, p.y)
+        gap_jump = bool(jump_started and self._near_uncleared_gap(old_x, self.gap_jump_lookahead))
+        gap_jump_hold = bool(
+            jump_pressed
+            and p.vy > 0.0
+            and not p.on_ground
+            and self._near_uncleared_gap(old_x, self.gap_jump_hold_lookahead)
+        )
         enemy_pass_count = 0 if hit_enemy else self._enemy_pass_count(old_x, p.x)
         checkpoint_count = self._checkpoint_count()
 
@@ -874,6 +900,8 @@ class ToyPlatformerEnv(gym.Env):
             'stomp': self.stomp_reward if stomped_enemy else 0.0,
             'safe_landing': self.safe_landing_reward if safe_landing else 0.0,
             'gap_clear': self.gap_clear_reward * gap_clear_count,
+            'gap_jump': self.gap_jump_reward if gap_jump else 0.0,
+            'gap_jump_hold': self.gap_jump_hold_reward if gap_jump_hold else 0.0,
             'enemy_pass': self.enemy_pass_reward * enemy_pass_count,
             'checkpoint': self.checkpoint_reward * checkpoint_count,
             'goal': self.goal_reward if reached_goal else 0.0,
@@ -901,6 +929,8 @@ class ToyPlatformerEnv(gym.Env):
             'stomped_enemy': stomped_enemy,
             'safe_landing': safe_landing,
             'gap_clear_count': gap_clear_count,
+            'gap_jump': gap_jump,
+            'gap_jump_hold': gap_jump_hold,
             'enemy_pass_count': enemy_pass_count,
             'checkpoint_count': checkpoint_count,
             'reward_components': reward_components,

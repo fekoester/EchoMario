@@ -57,6 +57,8 @@ def ppo_update(
     max_grad_norm: float,
     value_clip_eps: float = 0.0,
     target_kl: float = 0.0,
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.bfloat16,
 ) -> PPOStats:
     advantages, returns = compute_gae(rollout, gamma=gamma, gae_lambda=gae_lambda)
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -73,29 +75,31 @@ def ppo_update(
         perm = idx[torch.randperm(n, device=rollout.states.device)]
         for start in range(0, n, minibatch_size):
             mb_idx = perm[start : start + minibatch_size]
-            _, new_log_probs, entropy, new_values = policy.get_action_and_value(
-                rollout.states[mb_idx],
-                rollout.actions[mb_idx],
-            )
-            log_ratio = new_log_probs - old_log_probs[mb_idx]
-            ratio = log_ratio.exp()
-            mb_adv = advantages[mb_idx]
-            unclipped = ratio * mb_adv
-            clipped = torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps) * mb_adv
-            policy_loss = -torch.min(unclipped, clipped).mean()
-            value_loss_unclipped = (new_values - returns[mb_idx]).pow(2)
-            if value_clip_eps > 0.0:
-                value_clipped = old_values[mb_idx] + torch.clamp(
-                    new_values - old_values[mb_idx],
-                    -value_clip_eps,
-                    value_clip_eps,
+            amp_enabled = use_amp and rollout.states.device.type == 'cuda'
+            with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=amp_enabled):
+                _, new_log_probs, entropy, new_values = policy.get_action_and_value(
+                    rollout.states[mb_idx],
+                    rollout.actions[mb_idx],
                 )
-                value_loss_clipped = (value_clipped - returns[mb_idx]).pow(2)
-                value_loss = 0.5 * torch.max(value_loss_unclipped, value_loss_clipped).mean()
-            else:
-                value_loss = 0.5 * value_loss_unclipped.mean()
-            entropy_loss = entropy.mean()
-            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss
+                log_ratio = new_log_probs - old_log_probs[mb_idx]
+                ratio = log_ratio.exp()
+                mb_adv = advantages[mb_idx]
+                unclipped = ratio * mb_adv
+                clipped = torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps) * mb_adv
+                policy_loss = -torch.min(unclipped, clipped).mean()
+                value_loss_unclipped = (new_values - returns[mb_idx]).pow(2)
+                if value_clip_eps > 0.0:
+                    value_clipped = old_values[mb_idx] + torch.clamp(
+                        new_values - old_values[mb_idx],
+                        -value_clip_eps,
+                        value_clip_eps,
+                    )
+                    value_loss_clipped = (value_clipped - returns[mb_idx]).pow(2)
+                    value_loss = 0.5 * torch.max(value_loss_unclipped, value_loss_clipped).mean()
+                else:
+                    value_loss = 0.5 * value_loss_unclipped.mean()
+                entropy_loss = entropy.mean()
+                loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss
 
             optimizer.zero_grad(set_to_none=True)
             loss.backward()

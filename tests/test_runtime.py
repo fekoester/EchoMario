@@ -152,6 +152,38 @@ def test_frame_stack_full_screen_observation_builds_cnn_policy():
     assert values.shape == (1,)
 
 
+def test_discrete_toy_action_wrapper_builds_categorical_cnn_policy():
+    config = {
+        'project': {'seed': 42, 'device': 'cpu'},
+        'env': {
+            'name': 'toy_platformer',
+            'randomize': False,
+            'observation_mode': 'full_screen',
+            'include_state_features': True,
+            'frame_stack': 4,
+            'action_mode': 'discrete_basic',
+        },
+        'reservoir': {'type': 'none'},
+        'agent': {'model': 'cnn', 'hidden_dim': 64},
+    }
+    env = make_env(config)
+    obs, _ = env.reset()
+    _next_obs, _reward, _terminated, _truncated, info = env.step(5)
+
+    assert env.action_space.n == 8
+    assert info['discrete_action_name'] == 'right_run_jump'
+    assert info['jump_pressed'] is True
+    assert info['run_pressed'] is True
+
+    reservoir = make_reservoir(config, input_dim=int(env.observation_space.shape[0]))
+    policy = build_policy(config, env, reservoir.cfg.size)
+    action, log_probs, _entropy, values = policy.get_action_and_value(torch.as_tensor(obs).unsqueeze(0))
+
+    assert action.shape == (1,)
+    assert log_probs.shape == (1,)
+    assert values.shape == (1,)
+
+
 def test_checkpoint_roundtrip_for_linear_baseline(tmp_path: Path):
     config = {
         'project': {'seed': 42, 'device': 'cpu'},

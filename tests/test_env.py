@@ -174,6 +174,41 @@ def test_gap_clear_shaped_reward_fires_once():
     assert info['gap_clear_count'] == 0
 
 
+def test_gap_jump_shaped_reward_fires_near_uncleared_gap():
+    env = ToyPlatformerEnv(
+        randomize=True,
+        seed=123,
+        enable_gaps=False,
+        enable_coins=False,
+        enable_moving_enemies=False,
+        enable_question_blocks=False,
+        enable_items=False,
+        forced_gaps=[[8, 9]],
+        progress_reward_scale=0.0,
+        step_penalty=0.0,
+        gap_jump_reward=2.0,
+        gap_jump_lookahead=5.0,
+        gap_jump_hold_reward=0.25,
+        gap_jump_hold_lookahead=5.0,
+    )
+    env.reset()
+    env.enemies = []
+    env.player.x = 4.0
+    env.player.y = 1.0
+    env.player.on_ground = True
+    env.player.vx = 0.0
+    env.player.vy = 0.0
+    env.max_x = 4.0
+
+    _obs, reward, _terminated, _truncated, info = env.step(np.array([1.0, 1.0, 1.0], dtype=np.float32))
+
+    assert info['gap_jump'] is True
+    assert info['gap_jump_hold'] is True
+    assert info['reward_components']['gap_jump'] == 2.0
+    assert info['reward_components']['gap_jump_hold'] == 0.25
+    assert reward >= 2.25
+
+
 def test_stagnation_termination():
     env = ToyPlatformerEnv(randomize=False, seed=123, stagnation_timeout=5, stagnation_epsilon=0.5)
     env.reset()

@@ -128,6 +128,9 @@ def main() -> None:
     update_epochs = int(config['training']['update_epochs'])
     value_clip_eps = float(config['training'].get('value_clip_eps', 0.0))
     target_kl = float(config['training'].get('target_kl', 0.0))
+    use_amp = bool(config['training'].get('use_amp', False))
+    amp_dtype_name = str(config['training'].get('amp_dtype', 'bfloat16')).lower()
+    amp_dtype = torch.float16 if amp_dtype_name in {'float16', 'fp16'} else torch.bfloat16
     entropy_coef_start = float(config['agent']['entropy_coef'])
     entropy_coef_end = float(config['agent'].get('entropy_coef_end', entropy_coef_start))
     entropy_anneal_steps = int(config['agent'].get('entropy_anneal_steps', total_steps))
@@ -138,7 +141,8 @@ def main() -> None:
         'training setup: '
         f'device={device}, num_envs={num_envs}, rollout_steps={rollout_steps}, '
         f'batch={num_envs * rollout_steps}, minibatch_size={minibatch_size}, '
-        f'update_epochs={update_epochs}, rollout_workers={rollout_workers}'
+        f'update_epochs={update_epochs}, rollout_workers={rollout_workers}, '
+        f'amp={use_amp}:{amp_dtype_name}'
     )
 
     def reset_training_spec():
@@ -227,6 +231,8 @@ def main() -> None:
                 reset_fn=reset_training_episode,
                 progress_fn=update_rollout_progress,
                 progress_interval=rollout_progress_interval,
+                use_amp=use_amp,
+                amp_dtype=amp_dtype,
             )
         else:
             rollout = collect_rollout_env_pool(
@@ -241,6 +247,8 @@ def main() -> None:
                 reset_spec_fn=lambda _env_idx: reset_training_spec(),
                 progress_fn=update_rollout_progress,
                 progress_interval=rollout_progress_interval,
+                use_amp=use_amp,
+                amp_dtype=amp_dtype,
             )
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
@@ -273,6 +281,8 @@ def main() -> None:
             max_grad_norm=float(config['agent']['max_grad_norm']),
             value_clip_eps=value_clip_eps,
             target_kl=target_kl,
+            use_amp=use_amp,
+            amp_dtype=amp_dtype,
         )
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
