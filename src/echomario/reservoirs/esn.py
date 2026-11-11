@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+
 import numpy as np
+import torch
+from scipy import sparse
+
+# The sparse input projection reads one W_in row per non-zero input, the dense one reads all of
+# W_in once per batch. Use the sparse path while the batch has fewer non-zeros than this fraction
+# of the input dimension (one tile-observation env is ~10 % non-zero).
+_SPARSE_INPUT_MAX_NONZERO_FRACTION = 0.3
 
 
 @dataclass
@@ -16,6 +24,7 @@ class ESNConfig:
     sparsity: float = 0.02
     seed: int = 123
     state_norm: str = "rms"
+    device: str = "cpu"
 
 
 class SparseESN:
@@ -29,6 +38,33 @@ class SparseESN:
         ).astype(np.float32)
         self.W_res = self._make_sparse_reservoir(cfg.size, cfg.sparsity, cfg.spectral_radius)
         self.x = np.zeros((1, cfg.size), dtype=np.float32)
+        self._prepare_fast_path()
+
+    def _prepare_fast_path(self) -> None:
+        """
+        Caches a CSR copy of the recurrent matrix (it is ~1 % dense), a row-major W_in.T for the
+        sparse input path and a torch copy of W_in.T (optionally on GPU) for the dense path.
+        """
+        self._W_res_csr = sparse.csr_matrix(self.W_res)
+        self._W_in_T = np.ascontiguousarray(self.W_in.T)
+        self._torch_device = torch.device(getattr(self.cfg, "device", "cpu") or "cpu")
+        self._W_in_T_torch = torch.from_numpy(self._W_in_T).to(self._torch_device)
+
+    def _input_projection(self, u: np.ndarray) -> np.ndarray:
+        """Computes u @ W_in.T, skipping the zero entries of sparse (one-hot tile) observations."""
+        on_cpu = self._torch_device.type == "cpu"
+        if on_cpu and np.count_nonzero(u) <= _SPARSE_INPUT_MAX_NONZERO_FRACTION * u.shape[1]:
+            return np.asarray(sparse.csr_matrix(u) @ self._W_in_T, dtype=np.float32)
+        u_t = torch.from_numpy(np.ascontiguousarray(u)).to(self._torch_device, non_blocking=True)
+        return (u_t @ self._W_in_T_torch).cpu().numpy()
+
+    def _recurrent_projection(self, x: np.ndarray) -> np.ndarray:
+        """Computes x @ W_res.T using the sparse recurrent matrix."""
+        return np.asarray((self._W_res_csr @ x.T).T, dtype=np.float32)
+
+    def _next_state(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        new_x = np.tanh(self._recurrent_projection(x) + self._input_projection(u))
+        return ((1.0 - self.cfg.leak_rate) * x + self.cfg.leak_rate * new_x).astype(np.float32)
 
     def _make_sparse_reservoir(self, size: int, sparsity: float, spectral_radius: float) -> np.ndarray:
         W = np.zeros((size, size), dtype=np.float32)
@@ -87,10 +123,17 @@ class SparseESN:
         if u.ndim != 2 or u.shape[1] != self.cfg.input_dim:
             raise ValueError(f"Expected batch of shape (N, {self.cfg.input_dim}), got {u.shape}")
         self._ensure_batch_size(u.shape[0])
-        pre = self.x @ self.W_res.T + u @ self.W_in.T
-        new_x = np.tanh(pre).astype(np.float32)
-        self.x = ((1.0 - self.cfg.leak_rate) * self.x + self.cfg.leak_rate * new_x).astype(np.float32)
+        self.x = self._next_state(self.x, u)
         return self._normalize_state(self.x).copy()
+
+    def peek_batch(self, u: np.ndarray, indices: np.ndarray | list[int]) -> np.ndarray:
+        """
+        Returns the (normalized) state the reservoirs at ``indices`` would have after receiving
+        ``u``, without changing the stored state. Used to value terminal observations.
+        """
+        u = np.asarray(u, dtype=np.float32).reshape(len(indices), -1)
+        idx = np.asarray(indices, dtype=np.int64)
+        return self._normalize_state(self._next_state(self.x[idx], u))
 
     def step(self, u: np.ndarray) -> np.ndarray:
         return self.step_batch(np.asarray(u, dtype=np.float32).reshape(1, -1))[0]
@@ -104,11 +147,15 @@ class SparseESN:
         }
 
     @classmethod
-    def from_state_dict(cls, state: dict[str, Any]) -> "SparseESN":
-        cfg = ESNConfig(**state["cfg"])
+    def from_state_dict(cls, state: dict[str, Any]) -> SparseESN:
+        cfg_dict = dict(state["cfg"])
+        if str(cfg_dict.get("device", "cpu")).startswith("cuda") and not torch.cuda.is_available():
+            cfg_dict["device"] = "cpu"
+        cfg = ESNConfig(**cfg_dict)
         obj = cls(cfg)
         obj.W_in = state["W_in"].astype(np.float32)
-        obj.W_res = state["W_res"].astype(np.float32)
+        obj.W_res = np.asarray(state["W_res"], dtype=np.float32)
+        obj._prepare_fast_path()
         obj.reset()
         return obj
 
@@ -151,11 +198,14 @@ class IdentityReservoir:
     def step(self, u: np.ndarray) -> np.ndarray:
         return self.step_batch(np.asarray(u, dtype=np.float32).reshape(1, -1))[0]
 
+    def peek_batch(self, u: np.ndarray, indices: np.ndarray | list[int]) -> np.ndarray:
+        return np.asarray(u, dtype=np.float32).reshape(len(indices), -1).copy()
+
     def state_dict(self) -> dict[str, Any]:
         return {"type": "none", "cfg": self.cfg.__dict__}
 
     @classmethod
-    def from_state_dict(cls, state: dict[str, Any]) -> "IdentityReservoir":
+    def from_state_dict(cls, state: dict[str, Any]) -> IdentityReservoir:
         cfg = state.get("cfg", {})
         input_dim = int(cfg["input_dim"])
         return cls(input_dim=input_dim)
@@ -187,5 +237,6 @@ def make_reservoir(config: dict[str, Any], input_dim: int) -> ReservoirLike:
         sparsity=float(r_cfg.get("sparsity", 0.02)),
         seed=int(r_cfg.get("seed", 123)),
         state_norm=str(r_cfg.get("state_norm", "rms")),
+        device=str(r_cfg.get("device", "cpu")),
     )
     return SparseESN(cfg)

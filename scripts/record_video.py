@@ -9,12 +9,12 @@ import numpy as np
 import torch
 from gymnasium import spaces
 
+from echomario.agents.base import reset_policy_state
 from echomario.agents.factory import build_policy, policy_contribution
 from echomario.envs.make_env import make_env
 from echomario.reservoirs.esn import load_reservoir_from_state_dict
 from echomario.utils.checkpoint import load_checkpoint
 from echomario.viz.panels import compose_frame
-
 
 DISCRETE_ACTION_LABELS_TOY = [
     "noop",
@@ -39,6 +39,12 @@ def parse_args():
     parser.add_argument("--out", type=str, required=True)
     parser.add_argument("--max-steps", type=int, default=1000)
     parser.add_argument("--fps", type=int, default=30)
+    parser.add_argument(
+        "--level-seed",
+        type=int,
+        default=None,
+        help="record a specific procedurally generated level (e.g. an eval seed such as 10003)",
+    )
     return parser.parse_args()
 
 
@@ -62,8 +68,10 @@ def main() -> None:
     policy.load_state_dict(ckpt["policy_state"])
     policy.eval()
 
-    obs, _ = env.reset()
+    reset_options = None if args.level_seed is None else {"level_seed": args.level_seed}
+    obs, _ = env.reset(options=reset_options)
     reservoir.reset()
+    reset_policy_state(policy, batch_size=1)
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

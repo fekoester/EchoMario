@@ -9,7 +9,6 @@ import numpy as np
 from echomario.envs.make_env import make_env
 from echomario.utils.config import load_config
 
-
 HELP_TEXT = [
     'A/D or arrows: move left/right',
     'J / shift / Z: run (Mario B)',

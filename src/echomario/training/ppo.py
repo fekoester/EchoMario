@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
 from torch import optim
+
 from echomario.agents.readout_policy import ReadoutActorCritic
 from echomario.training.rollout import Rollout
 
@@ -42,6 +44,27 @@ def compute_gae(rollout: Rollout, gamma: float, gae_lambda: float) -> tuple[torc
     return advantages.reshape(-1), returns.reshape(-1)
 
 
+def _recurrent_minibatches(rollout: Rollout, seq_len: int, minibatch_size: int):
+    """
+    Splits the (T, N) rollout into per-env chunks of ``seq_len`` steps (truncated BPTT) and groups
+    them into minibatches of roughly ``minibatch_size`` steps. Yields (time_idx (L, B), env_idx (B,)).
+    """
+    T = rollout.rewards.shape[0]
+    N = rollout.num_envs
+    seq_len = max(1, min(seq_len, T))
+    starts = [(c, e) for e in range(N) for c in range(0, T - seq_len + 1, seq_len)]
+    if T % seq_len:
+        starts += [(T - seq_len, e) for e in range(N)]  # cover the tail (overlapping chunk)
+    chunks_per_mb = max(1, minibatch_size // seq_len)
+    order = torch.randperm(len(starts)).tolist()
+    for i in range(0, len(order), chunks_per_mb):
+        batch = [starts[j] for j in order[i : i + chunks_per_mb]]
+        t0 = torch.tensor([c for c, _ in batch])
+        env = torch.tensor([e for _, e in batch])
+        time_idx = t0.unsqueeze(0) + torch.arange(seq_len).unsqueeze(1)  # (L, B)
+        yield time_idx, env
+
+
 def ppo_update(
     *,
     policy: ReadoutActorCritic,
@@ -59,28 +82,61 @@ def ppo_update(
     target_kl: float = 0.0,
     use_amp: bool = False,
     amp_dtype: torch.dtype = torch.bfloat16,
+    seq_len: int = 64,
 ) -> PPOStats:
     advantages, returns = compute_gae(rollout, gamma=gamma, gae_lambda=gae_lambda)
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
+    device = rollout.states.device
     n = rollout.states.shape[0]
-    idx = torch.arange(n, device=rollout.states.device)
+    idx = torch.arange(n, device=device)
     old_log_probs = rollout.log_probs.reshape(-1)
     old_values = rollout.values.reshape(-1)
+    actions_are_raw = bool(getattr(rollout, 'actions_are_raw', False))
+    recurrent = bool(getattr(policy, 'is_recurrent', False))
+    if recurrent and rollout.hiddens is None:
+        raise ValueError('Recurrent policies need a rollout collected with hidden states.')
+    num_envs = int(getattr(rollout, 'num_envs', 1))
+    if recurrent:
+        prev_dones = torch.cat(
+            [torch.zeros_like(rollout.dones[:1]), rollout.dones[:-1]], dim=0
+        )  # (T, N): episode ended before step t
     last_stats = None
     update_steps = 0
     stopped_early = False
 
+    def minibatches():
+        if recurrent:
+            for time_idx, env_idx in _recurrent_minibatches(rollout, seq_len, minibatch_size):
+                time_idx, env_idx = time_idx.to(device), env_idx.to(device)
+                yield (time_idx * num_envs + env_idx.unsqueeze(0)).reshape(-1), (time_idx, env_idx)
+        else:
+            perm = idx[torch.randperm(n, device=device)]
+            for start in range(0, n, minibatch_size):
+                yield perm[start : start + minibatch_size], None
+
+    def evaluate(mb_idx, seq):
+        if not recurrent:
+            _, log_probs, entropy, values = policy.get_action_and_value(
+                rollout.states[mb_idx], rollout.actions[mb_idx], actions_are_raw=actions_are_raw
+            )
+            return log_probs, entropy, values
+        time_idx, env_idx = seq
+        flat = time_idx * num_envs + env_idx.unsqueeze(0)  # (L, B)
+        log_probs, entropy, values = policy.evaluate_sequence(
+            rollout.states[flat],
+            rollout.hiddens[flat[0]],
+            prev_dones[time_idx, env_idx.unsqueeze(0).expand_as(time_idx)],
+            rollout.actions[flat],
+            actions_are_raw=actions_are_raw,
+        )
+        return log_probs.reshape(-1), entropy.reshape(-1), values.reshape(-1)
+
     for _epoch in range(update_epochs):
-        perm = idx[torch.randperm(n, device=rollout.states.device)]
-        for start in range(0, n, minibatch_size):
-            mb_idx = perm[start : start + minibatch_size]
-            amp_enabled = use_amp and rollout.states.device.type == 'cuda'
+        for mb_idx, seq in minibatches():
+            amp_enabled = use_amp and device.type == 'cuda'
             with torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=amp_enabled):
-                _, new_log_probs, entropy, new_values = policy.get_action_and_value(
-                    rollout.states[mb_idx],
-                    rollout.actions[mb_idx],
-                )
+                new_log_probs, entropy, new_values = evaluate(mb_idx, seq)
                 log_ratio = new_log_probs - old_log_probs[mb_idx]
                 ratio = log_ratio.exp()
                 mb_adv = advantages[mb_idx]
@@ -109,9 +165,7 @@ def ppo_update(
             with torch.no_grad():
                 log_ratio_detached = log_ratio.detach()
                 approx_kl = ((log_ratio_detached.exp() - 1.0) - log_ratio_detached).mean()
-                clip_fraction = (
-                    (ratio.detach() - 1.0).abs() > clip_eps
-                ).float().mean()
+                clip_fraction = ((ratio.detach() - 1.0).abs() > clip_eps).float().mean()
             update_steps += 1
             last_stats = PPOStats(
                 loss=float(loss.detach().cpu()),

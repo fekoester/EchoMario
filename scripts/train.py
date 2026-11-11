@@ -16,8 +16,8 @@ from echomario.agents.factory import PolicyLike, build_policy
 from echomario.envs.make_env import make_env
 from echomario.envs.reset import EpisodeSeedManager
 from echomario.reservoirs.esn import ReservoirLike, make_reservoir
-from echomario.training.evaluate import evaluate_policy, evaluate_policy_env_pool
 from echomario.training.env_pool import SubprocEnvPool
+from echomario.training.evaluate import evaluate_policy, evaluate_policy_env_pool
 from echomario.training.ppo import ppo_update
 from echomario.training.rollout import (
     collect_rollout_env_pool,
@@ -129,6 +129,10 @@ def main() -> None:
     value_clip_eps = float(config['training'].get('value_clip_eps', 0.0))
     target_kl = float(config['training'].get('target_kl', 0.0))
     use_amp = bool(config['training'].get('use_amp', False))
+    gamma = float(config['training']['gamma'])
+    # Bootstrap V(s_T) on time-limit truncation (set false to reproduce pre-0.2 behaviour).
+    bootstrap_truncation = bool(config['training'].get('bootstrap_truncation', True))
+    seq_len = int(config['training'].get('seq_len', 64))
     amp_dtype_name = str(config['training'].get('amp_dtype', 'bfloat16')).lower()
     amp_dtype = torch.float16 if amp_dtype_name in {'float16', 'fp16'} else torch.bfloat16
     entropy_coef_start = float(config['agent']['entropy_coef'])
@@ -162,7 +166,7 @@ def main() -> None:
     eval_env = make_env(config)
     eval_reservoir = make_reservoir(config, input_dim=int(eval_env.observation_space.shape[0]))
     eval_reset_specs = seed_manager.evaluation_reset_specs()
-    if eval_workers <= 0 and reservoir_is_identity(eval_reservoir):
+    if eval_workers <= 0 and reservoir_is_identity(eval_reservoir) and not getattr(policy, 'is_recurrent', False):
         eval_workers = len(eval_reset_specs)
     if eval_workers not in {0, len(eval_reset_specs)}:
         raise ValueError('training.eval_workers must be 0 or equal to env.num_eval_seeds')
@@ -213,7 +217,7 @@ def main() -> None:
 
         def update_rollout_progress(step_count: int) -> None:
             nonlocal progress_during_rollout
-            step_count = min(step_count, total_steps - (global_step + progress_during_rollout))
+            step_count = min(step_count, total_steps - (global_step + progress_during_rollout))  # noqa: B023 (called within this iteration)
             if step_count <= 0:
                 return
             progress_during_rollout += step_count
@@ -233,6 +237,7 @@ def main() -> None:
                 progress_interval=rollout_progress_interval,
                 use_amp=use_amp,
                 amp_dtype=amp_dtype,
+                gamma=gamma if bootstrap_truncation else None,
             )
         else:
             rollout = collect_rollout_env_pool(
@@ -249,6 +254,7 @@ def main() -> None:
                 progress_interval=rollout_progress_interval,
                 use_amp=use_amp,
                 amp_dtype=amp_dtype,
+                gamma=gamma if bootstrap_truncation else None,
             )
         if device.type == 'cuda':
             torch.cuda.synchronize(device)
@@ -271,7 +277,7 @@ def main() -> None:
             policy=policy,
             optimizer=optimizer,
             rollout=rollout,
-            gamma=float(config['training']['gamma']),
+            gamma=gamma,
             gae_lambda=float(config['training']['gae_lambda']),
             update_epochs=update_epochs,
             minibatch_size=minibatch_size,
@@ -283,6 +289,7 @@ def main() -> None:
             target_kl=target_kl,
             use_amp=use_amp,
             amp_dtype=amp_dtype,
+            seq_len=seq_len,
         )
         if device.type == 'cuda':
             torch.cuda.synchronize(device)

@@ -4,10 +4,10 @@ import numpy as np
 from gymnasium import spaces
 
 from echomario.agents.cnn_policy import TileCNNActorCritic
+from echomario.agents.gru_policy import GRUActorCritic
 from echomario.agents.readout_policy import ReadoutActorCritic
 
-
-PolicyLike = ReadoutActorCritic | TileCNNActorCritic
+PolicyLike = ReadoutActorCritic | TileCNNActorCritic | GRUActorCritic
 
 
 def policy_kind(config: dict) -> str:
@@ -21,10 +21,10 @@ def build_policy(config: dict, env, reservoir_dim: int) -> PolicyLike:
 
     if kind == 'cnn':
         agent_cfg = config.get('agent', {})
-        screen_channels = len(getattr(env, 'SCREEN_CHANNEL_NAMES'))
-        screen_height = int(getattr(env, 'height'))
-        screen_width = int(getattr(env, 'camera_width'))
-        state_dim = len(getattr(env, 'STATE_FEATURE_NAMES')) if bool(getattr(env, 'include_state_features', False)) else 0
+        screen_channels = len(env.SCREEN_CHANNEL_NAMES)
+        screen_height = int(env.height)
+        screen_width = int(env.camera_width)
+        state_dim = len(env.STATE_FEATURE_NAMES) if bool(getattr(env, 'include_state_features', False)) else 0
         cnn_channels_raw = agent_cfg.get('cnn_channels', [32, 64, 64])
         cnn_channels = tuple(int(value) for value in cnn_channels_raw)
         if len(cnn_channels) != 3:
@@ -38,6 +38,19 @@ def build_policy(config: dict, env, reservoir_dim: int) -> PolicyLike:
             continuous=continuous,
             hidden_dim=int(agent_cfg.get('hidden_dim', 256)),
             cnn_channels=cnn_channels,
+            log_std_init=float(agent_cfg.get('log_std_init', -1.0)),
+            min_log_std=float(agent_cfg.get('min_log_std', -3.0)),
+            max_log_std=float(agent_cfg.get('max_log_std', 0.0)),
+        )
+
+    if kind == 'gru':
+        agent_cfg = config.get('agent', {})
+        return GRUActorCritic(
+            obs_dim=int(reservoir_dim),
+            num_actions=num_actions,
+            continuous=continuous,
+            hidden_dim=int(agent_cfg.get('hidden_dim', 256)),
+            encoder_dim=int(agent_cfg.get('encoder_dim', 256)),
             log_std_init=float(agent_cfg.get('log_std_init', -1.0)),
             min_log_std=float(agent_cfg.get('min_log_std', -3.0)),
             max_log_std=float(agent_cfg.get('max_log_std', 0.0)),

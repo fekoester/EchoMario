@@ -10,12 +10,12 @@ import numpy as np
 import torch
 from gymnasium import spaces
 
+from echomario.agents.base import reset_policy_state
 from echomario.agents.factory import build_policy, policy_contribution
 from echomario.envs.make_env import make_env
 from echomario.reservoirs.esn import load_reservoir_from_state_dict
 from echomario.utils.checkpoint import load_checkpoint
 from echomario.viz.panels import compose_frame
-
 
 DISCRETE_ACTION_LABELS_TOY = [
     "noop",
@@ -142,6 +142,7 @@ def run_episode_frames(
 
     obs, _ = env.reset(seed=int(config["project"].get("seed", 42)))
     reservoir.reset()
+    reset_policy_state(policy, batch_size=1)
 
     frames = []
     done = False

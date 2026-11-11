@@ -8,6 +8,7 @@ import cv2
 import torch
 from gymnasium import spaces
 
+from echomario.agents.base import reset_policy_state
 from echomario.agents.factory import build_policy
 from echomario.envs.make_env import make_env
 from echomario.reservoirs.esn import load_reservoir_from_state_dict
@@ -35,6 +36,7 @@ def main() -> None:
 
     obs, _ = env.reset()
     reservoir.reset()
+    reset_policy_state(policy, batch_size=1)
     done = False
     ep_return = 0.0
 
