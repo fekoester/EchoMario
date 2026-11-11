@@ -3,7 +3,6 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-
 DEFAULT_INPUT_LABELS = [
     "x_norm",
     "y_norm",
@@ -217,7 +216,8 @@ def compose_frame(
     cv2.putText(
         frame,
         f"step={step} return={ep_return:.2f}",
-        (12, 25),
+        # Right-aligned in the game area so it does not overlap the env's own HUD (top-left).
+        (max(12, game.shape[1] - 300), 25),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.75,
         (255, 255, 255),

@@ -1184,7 +1184,8 @@ class ToyPlatformerEnv(gym.Env):
         if self.observation_mode == 'engineered':
             return self._engineered_obs()
         if self.observation_mode == 'full_screen':
-            return self._screen_obs()
+            # Copy: the screen buffer is reused, and callers (replay buffers, wrappers) may keep obs.
+            return self._screen_obs().copy()
         raise ValueError(f'Unknown observation_mode: {self.observation_mode}')
 
     def get_input_feature_names(self) -> list[str]:

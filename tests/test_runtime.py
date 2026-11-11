@@ -1,8 +1,8 @@
 from pathlib import Path
 
+import gymnasium as gym
 import numpy as np
 import torch
-import gymnasium as gym
 from gymnasium import spaces
 
 from echomario.agents.factory import build_policy

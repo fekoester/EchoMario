@@ -5,13 +5,28 @@ import numpy as np
 import torch
 from gymnasium import spaces
 
+from echomario.agents.base import reset_policy_state
 from echomario.agents.readout_policy import ReadoutActorCritic
 from echomario.envs.reset import ResetSpec
 from echomario.reservoirs.esn import ReservoirLike
 from echomario.training.env_pool import SubprocEnvPool
 
 
-def evaluate_policy(
+def evaluate_policy(**kwargs) -> dict[str, float]:
+    """
+    Deterministic evaluation over fixed reset specs. Recurrent policy state is saved and restored,
+    so evaluating in the middle of training does not disturb the training rollout.
+    """
+    policy = kwargs['policy']
+    snapshot = policy.snapshot_state() if hasattr(policy, 'snapshot_state') else None
+    try:
+        return _evaluate_policy(**kwargs)
+    finally:
+        if hasattr(policy, 'restore_state'):
+            policy.restore_state(snapshot)
+
+
+def _evaluate_policy(
     *,
     env: gym.Env,
     reservoir: ReservoirLike,
@@ -35,7 +50,8 @@ def evaluate_policy(
 
     for spec in specs[:episodes]:
         obs, _ = env.reset(**spec.as_kwargs())
-        reservoir.reset()
+        reservoir.reset(batch_size=1)
+        reset_policy_state(policy, batch_size=1)
         done = False
         ep_return = 0.0
         max_x = 0.0
@@ -82,7 +98,15 @@ def evaluate_policy(
     }
 
 
-def evaluate_policy_env_pool(
+def evaluate_policy_env_pool(**kwargs) -> dict[str, float]:
+    """Parallel deterministic evaluation (identity reservoirs only)."""
+    policy = kwargs['policy']
+    if getattr(policy, 'is_recurrent', False):
+        raise ValueError('evaluate_policy_env_pool does not support recurrent policies; use evaluate_policy')
+    return _evaluate_policy_env_pool(**kwargs)
+
+
+def _evaluate_policy_env_pool(
     *,
     env_pool: SubprocEnvPool,
     continuous: bool,

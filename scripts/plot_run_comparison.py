@@ -7,7 +7,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-
 METRICS = [
     ('eval_return_mean', 'Mean Return'),
     ('eval_max_x_mean', 'Mean Max X'),
