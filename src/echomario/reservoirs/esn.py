@@ -25,6 +25,17 @@ class ESNConfig:
     seed: int = 123
     state_norm: str = "rms"
     device: str = "cpu"
+    # Multi-timescale reservoir: when both are set, every neuron gets its own leak rate drawn
+    # log-uniformly from [leak_rate_min, leak_rate_max] (fast neurons track velocity, slow ones context).
+    leak_rate_min: float | None = None
+    leak_rate_max: float | None = None
+    # Input layout. 'dense': every neuron sees a random mix of the whole observation.
+    # 'local': every neuron sees one random (2r+1)x(2r+1) patch of the tile screen (all channels),
+    # like a random convolution feature; the camera follows the player, so a patch is a fixed offset
+    # from the player. Extra state features (after the screen) still connect densely.
+    input_structure: str = "dense"
+    screen_shape: tuple[int, int, int] | None = None  # (rows, cols, channels), needed for 'local'
+    patch_radius: int = 2
 
 
 class SparseESN:
@@ -36,7 +47,12 @@ class SparseESN:
             scale=cfg.input_scale / np.sqrt(max(1, cfg.input_dim)),
             size=(cfg.size, cfg.input_dim),
         ).astype(np.float32)
+        if cfg.input_structure == "local":
+            self.W_in = self._make_local_input(cfg)
+        elif cfg.input_structure != "dense":
+            raise ValueError(f"unknown reservoir.input_structure {cfg.input_structure!r}")
         self.W_res = self._make_sparse_reservoir(cfg.size, cfg.sparsity, cfg.spectral_radius)
+        self.leak = self._make_leak(cfg)
         self.x = np.zeros((1, cfg.size), dtype=np.float32)
         self._prepare_fast_path()
 
@@ -62,9 +78,44 @@ class SparseESN:
         """Computes x @ W_res.T using the sparse recurrent matrix."""
         return np.asarray((self._W_res_csr @ x.T).T, dtype=np.float32)
 
+    @staticmethod
+    def _make_local_input(cfg: ESNConfig) -> np.ndarray:
+        if cfg.screen_shape is None:
+            raise ValueError("input_structure 'local' needs screen_shape (rows, cols, channels)")
+        rows, cols, channels = (int(v) for v in cfg.screen_shape)
+        screen_dim = rows * cols * channels
+        if screen_dim > cfg.input_dim:
+            raise ValueError(f"screen_shape {cfg.screen_shape} is larger than input_dim {cfg.input_dim}")
+        rng = np.random.default_rng(cfg.seed + 104729)
+        W = np.zeros((cfg.size, cfg.input_dim), dtype=np.float32)
+        r = int(cfg.patch_radius)
+        for n in range(cfg.size):
+            r0, c0 = int(rng.integers(0, rows)), int(rng.integers(0, cols))
+            rr = np.arange(max(0, r0 - r), min(rows, r0 + r + 1))
+            cc = np.arange(max(0, c0 - r), min(cols, c0 + r + 1))
+            cells = (rr[:, None] * cols + cc[None, :]).reshape(-1)
+            idx = (cells[:, None] * channels + np.arange(channels)[None, :]).reshape(-1)
+            # One channel is active per cell, so the drive has std ~ input_scale.
+            W[n, idx] = rng.normal(0.0, cfg.input_scale / np.sqrt(len(cells)), size=len(idx))
+        extra = cfg.input_dim - screen_dim
+        if extra > 0:
+            W[:, screen_dim:] = rng.normal(0.0, cfg.input_scale / np.sqrt(extra), size=(cfg.size, extra))
+        return W
+
+    def _make_leak(self, cfg: ESNConfig) -> float | np.ndarray:
+        """Scalar leak rate, or one leak rate per neuron for a multi-timescale reservoir."""
+        lo, hi = cfg.leak_rate_min, cfg.leak_rate_max
+        if lo is None or hi is None:
+            return float(cfg.leak_rate)
+        if not 0.0 < lo <= hi <= 1.0:
+            raise ValueError('need 0 < leak_rate_min <= leak_rate_max <= 1')
+        # Separate generator so W_in / W_res stay identical to a single-timescale reservoir.
+        rng = np.random.default_rng(cfg.seed + 7919)
+        return np.exp(rng.uniform(np.log(lo), np.log(hi), size=cfg.size)).astype(np.float32)
+
     def _next_state(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         new_x = np.tanh(self._recurrent_projection(x) + self._input_projection(u))
-        return ((1.0 - self.cfg.leak_rate) * x + self.cfg.leak_rate * new_x).astype(np.float32)
+        return ((1.0 - self.leak) * x + self.leak * new_x).astype(np.float32)
 
     def _make_sparse_reservoir(self, size: int, sparsity: float, spectral_radius: float) -> np.ndarray:
         W = np.zeros((size, size), dtype=np.float32)
@@ -149,6 +200,8 @@ class SparseESN:
     @classmethod
     def from_state_dict(cls, state: dict[str, Any]) -> SparseESN:
         cfg_dict = dict(state["cfg"])
+        if cfg_dict.get("screen_shape") is not None:
+            cfg_dict["screen_shape"] = tuple(cfg_dict["screen_shape"])
         if str(cfg_dict.get("device", "cpu")).startswith("cuda") and not torch.cuda.is_available():
             cfg_dict["device"] = "cpu"
         cfg = ESNConfig(**cfg_dict)
@@ -221,6 +274,17 @@ def load_reservoir_from_state_dict(state: dict[str, Any]) -> ReservoirLike:
     return SparseESN.from_state_dict(state)
 
 
+def screen_shape_from_config(config: dict[str, Any]) -> tuple[int, int, int] | None:
+    """(rows, cols, channels) of the toy platformer's tile screen, or None for other envs."""
+    env_cfg = config.get("env", {})
+    if env_cfg.get("name") != "toy_platformer" or env_cfg.get("observation_mode", "full_screen") != "full_screen":
+        return None
+    from echomario.envs.toy_platformer_env import ToyPlatformerEnv
+
+    channels = len(ToyPlatformerEnv.SCREEN_CHANNEL_NAMES) * int(env_cfg.get("frame_stack", 1))
+    return int(env_cfg.get("height", 18)), int(env_cfg.get("camera_width", 36)), channels
+
+
 def make_reservoir(config: dict[str, Any], input_dim: int) -> ReservoirLike:
     r_cfg = config["reservoir"]
     reservoir_type = str(r_cfg.get("type", "sparse_esn"))
@@ -238,5 +302,10 @@ def make_reservoir(config: dict[str, Any], input_dim: int) -> ReservoirLike:
         seed=int(r_cfg.get("seed", 123)),
         state_norm=str(r_cfg.get("state_norm", "rms")),
         device=str(r_cfg.get("device", "cpu")),
+        leak_rate_min=None if r_cfg.get("leak_rate_min") is None else float(r_cfg["leak_rate_min"]),
+        leak_rate_max=None if r_cfg.get("leak_rate_max") is None else float(r_cfg["leak_rate_max"]),
+        input_structure=str(r_cfg.get("input_structure", "dense")),
+        screen_shape=screen_shape_from_config(config) if r_cfg.get("input_structure") == "local" else None,
+        patch_radius=int(r_cfg.get("patch_radius", 2)),
     )
     return SparseESN(cfg)
