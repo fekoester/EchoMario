@@ -112,6 +112,57 @@ Only 56 held-out frames are critical, so the crit. fatal column has a standard e
 ±0.05. α was picked on the test split here, which is optimistic. Use these numbers to rank
 variants, not as final scores.
 
+### How does the teacher play? How does the student?
+
+Measured with `scripts/analyze_play_style.py` on 20 test levels per stage. "Reachable" means
+at or before the farthest point the agent got to.
+
+**Full difficulty:**
+
+| | speedrunner teacher (default) | collector teacher (`--teacher-style collector`) | always run+jump |
+|---|---:|---:|---:|
+| levels finished | 95 % | 85 % | 30 % |
+| killed by an enemy | 0 | 0 | 5 |
+| enemies stomped | 169 of 316 reached (53 %) | 179 of 308 (58 %) | 18 (by accident) |
+| coins taken (of reachable) | 54 % | 75 % | 41 % |
+| ? blocks bumped | 18 % | 36 % | 1 % |
+| mushrooms collected | 0 of 1 spawned | 3 of 14 spawned | 0 |
+| speed when finishing (top run speed 9.9) | 8.1 tiles/s | 6.6 tiles/s | 8.4 tiles/s |
+| button changes per second | 3.4 | 4.6 | 0 |
+
+**Imitation student vs. speedrunner teacher (same 20 levels):**
+
+| | gaps: teacher | gaps: student (3000 neurons) | enemies: teacher | enemies: student (1200) |
+|---|---:|---:|---:|---:|
+| coins taken | 26 % | 18 % | 51 % | 27 % |
+| enemies stomped | – | – | 86 | 6 |
+| killed by an enemy | – | – | 0 | 13 of 20 runs |
+| speed when finishing | 6.9 tiles/s | 9.3 tiles/s | 6.9 tiles/s | 9.2 tiles/s |
+| button changes per second | 4.3 | 1.3 | 5.0 | 1.4 |
+
+The default teacher plays like a cautious speedrunner. It never dies to an enemy and stomps over
+half of them, but its lookahead is about one second and coins (0.4), mushrooms (1.5) and stomps
+(2.0) are tiny next to the 200-point death penalty. So it never detours for ? blocks or
+power-ups, and it collects fewer coins on the gaps stage than bunny-hopping does.
+
+The **collector** style adds planning-only bonuses (coin 1, ? block 6, mushroom 30, stomp 2). The
+bonuses fade out over the last 30 % of the time limit. While a mushroom is out within 10 tiles,
+the planner also looks further ahead (60-frame tail that may wait or walk left). This doubles the
+? blocks hit and lifts coins to three quarters, at the cost of some finished levels and speed.
+Mushrooms remain hard: one pops out on top of its block and creeps at 0.03 tiles/frame. Catching
+it means stepping out, jumping onto the block and walking to it, a three-step move the planner's
+tree does not contain. Speedrunner stays the default teacher, so the results above are unchanged.
+
+The student copies the running and jumping, not the rest. It runs faster than its teacher, presses
+fewer buttons, rarely stomps and takes fewer coins.
+
+<p align="center">
+  <img src="media/teacher_full_level.gif" width="432" alt="Planner teacher on a full-difficulty level">
+  <br>
+  <em>The speedrunner teacher on an unseen full-difficulty level: finishes, stomps 9 enemies,
+  collects 26 coins and never touches a ? block.</em>
+</p>
+
 ## What we learned
 
 1. **Yes, a frozen reservoir with a linear readout can learn to play, but only when it is taught.**
@@ -148,6 +199,14 @@ variants, not as final scores.
 
 ## Pitfalls found on the way
 
+- **`enemy_pass_reward` never paid out (fixed in 0.3).** The pass test was
+  `old_x <= enemy.x < new_x - 0.5`, which needs a step longer than 0.5 tiles, but the top speed
+  is 0.33 tiles per step. It now fires when Mario's x crosses `enemy.x + 0.5`. Enemies carry a
+  stable `uid`, so planner copies don't double-count. **Configs with `enemy_pass_reward > 0`
+  (curriculum stages, CNN configs, `configs/imitation/*` derived from them) now actually receive
+  that reward, so their old results are not directly comparable.** In this document that affects
+  only the *gaps + enemies* stage (`enemy_pass_reward: 2.0`). All of its DAgger, PPO and
+  play-style numbers were produced before the fix. Full difficulty and gaps use 0.
 - **One-hot labels from a planner are a poor target.** The planner breaks near-ties between
   equally good actions by a fixed priority. The labels then look arbitrary to a linear readout:
   on full-difficulty levels the one-hot student finished 0 % and agreed with the teacher only

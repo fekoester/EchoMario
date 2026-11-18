@@ -41,6 +41,7 @@ class Enemy:
     vx: float
     left: float
     right: float
+    uid: int = -1  # stable id (index at spawn), survives get/set_sim_state copies
 
 
 @dataclass
@@ -588,6 +589,7 @@ class ToyPlatformerEnv(gym.Env):
             vx=float(self.enemy_speed if self.rng.random() < 0.5 else -self.enemy_speed),
             left=float(left),
             right=float(right),
+            uid=len(self.enemies),
         )
         self.enemies.append(enemy)
 
@@ -767,13 +769,18 @@ class ToyPlatformerEnv(gym.Env):
         return False
 
     def _enemy_pass_count(self, old_x: float, new_x: float) -> int:
+        """
+        Enemies the player got past this step: the player's x crossed ``enemy.x + 0.5`` moving right.
+        (Before 0.3 the test was ``old_x <= enemy.x < new_x - 0.5``, which needs a step longer than
+        0.5 tiles; the top speed is 0.33 tiles per step, so it never fired and
+        ``enemy_pass_reward`` was never paid.)
+        """
         count = 0
         for enemy in self.enemies:
-            enemy_id = id(enemy)
-            if enemy_id in self.passed_enemy_ids:
+            if enemy.uid in self.passed_enemy_ids:
                 continue
-            if old_x <= enemy.x < new_x - 0.5:
-                self.passed_enemy_ids.add(enemy_id)
+            if old_x < enemy.x + 0.5 <= new_x:
+                self.passed_enemy_ids.add(enemy.uid)
                 count += 1
         return count
 
@@ -935,7 +942,7 @@ class ToyPlatformerEnv(gym.Env):
         }
         reward = sum(reward_components.values())
         if stomped_enemy:
-            self.passed_enemy_ids.add(id(enemy))
+            self.passed_enemy_ids.add(enemy.uid)
         if reached_goal:
             p.score += 1000
 
@@ -989,7 +996,7 @@ class ToyPlatformerEnv(gym.Env):
             frozenset(self.cleared_gap_indices),
             frozenset(self.passed_enemy_ids),
             self.next_checkpoint_x,
-            [Enemy(e.x, e.y, e.vx, e.left, e.right) for e in self.enemies],
+            [Enemy(e.x, e.y, e.vx, e.left, e.right, e.uid) for e in self.enemies],
             tuple(c.collected for c in self.coins),
             tuple(b.used for b in self.question_blocks),
             [Item(i.x, i.y, i.kind, i.vx, i.vy, i.collected, i.emerging_frames) for i in self.items],
@@ -1007,7 +1014,7 @@ class ToyPlatformerEnv(gym.Env):
         self.cleared_gap_indices = set(cleared)
         self.passed_enemy_ids = set(passed)
         self.next_checkpoint_x = next_cp
-        self.enemies = [Enemy(e.x, e.y, e.vx, e.left, e.right) for e in enemies]
+        self.enemies = [Enemy(e.x, e.y, e.vx, e.left, e.right, e.uid) for e in enemies]
         for coin, collected in zip(self.coins, coins):
             coin.collected = collected
         self._coins_left = sum(0 if c else 1 for c in coins)

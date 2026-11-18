@@ -26,9 +26,10 @@ from echomario.imitation import FeatureMap, RidgeAccumulator, discrete_config, m
 
 def record_levels(args: tuple) -> list[dict]:
     """Worker: plays ``seeds`` with the planner and records observations and planner scores."""
-    config, seeds, plan_every = args
+    config, seeds, plan_every, *rest = args
+    style = rest[0] if rest else 'speedrunner'
     env = make_env(discrete_config(config))
-    planner = LookaheadPlanner(PlannerConfig())
+    planner = LookaheadPlanner(PlannerConfig.named(style))
     out = []
     for seed in seeds:
         start = time.perf_counter()

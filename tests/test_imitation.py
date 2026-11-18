@@ -100,3 +100,30 @@ def test_run_episode_collects_features_and_labels():
     assert targets.shape == (feats.shape[0], 8) and np.allclose(targets.max(axis=1), 1.0)
     assert feats.shape == ((stats.length + 1) // 2, 41) and labels.shape == (feats.shape[0],)
     assert stats.reached_goal
+
+
+def test_enemy_pass_counter_fires_and_survives_sim_state_copies():
+    from echomario.envs.toy_platformer_env import Enemy
+
+    env = ToyPlatformerEnv(**EASY, enemy_pass_reward=1.0)
+    env.reset(options={'level_seed': 4})
+    p = env.player
+    env.enemies = [Enemy(x=p.x + 4.0, y=1.0, vx=0.0, left=p.x + 3.0, right=p.x + 5.0, uid=0)]
+    env.passed_enemy_ids = set()
+    jump_right = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    passes, stomps = 0, 0
+    snap = None
+    for t in range(40):
+        if t == 5:
+            snap = env.get_sim_state()
+        _o, _r, term, _tr, info = env.step(jump_right)
+        passes += info['enemy_pass_count']
+        stomps += int(info['stomped_enemy'])
+        assert not info['hit_enemy']
+        if term:
+            break
+    assert passes + stomps == 1
+    # replaying from a snapshot gives the same count (ids are stable across copies)
+    env.set_sim_state(snap)
+    replay = sum(env.step(jump_right)[4]['enemy_pass_count'] for _ in range(34))
+    assert replay == passes

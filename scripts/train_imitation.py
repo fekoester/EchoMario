@@ -54,6 +54,7 @@ def parse_args():
     p.add_argument('--val-levels', type=int, default=20)
     p.add_argument('--test-levels', type=int, default=None, help='default: env.num_eval_seeds')
     p.add_argument('--workers', type=int, default=2)
+    p.add_argument('--teacher-style', default='speedrunner', help="'speedrunner' (default) or 'collector'")
     p.add_argument('--skip-teacher', action='store_true')
     p.add_argument('--set', action='append', default=[], help='override a config value, e.g. reservoir.size=2000')
     p.add_argument('--out', required=True)
@@ -92,13 +93,16 @@ def main() -> None:
     val_seeds = list(range(5000, 5000 + args.val_levels))
     train_seed_base = 100_000 + 1000 * int(config['project'].get('seed', 42))
 
+    from echomario.experts.planner import PlannerConfig
+
+    planner_cfg = PlannerConfig.named(args.teacher_style)
     ctx = mp.get_context('fork')
     pool = ctx.Pool(args.workers)
     results: dict = {'config': config, 'mode': args.mode, 'args': vars(args), 'iterations': []}
 
     t0 = time.perf_counter()
     if not args.skip_teacher:
-        teacher = sum(pool.map(expert_worker, [(config, c, None) for c in chunks(test_seeds, args.workers)]), [])
+        teacher = sum(pool.map(expert_worker, [(config, c, planner_cfg) for c in chunks(test_seeds, args.workers)]), [])
         results['teacher_test'] = summarize(teacher)
         print(f"teacher on test levels: {results['teacher_test']}  ({time.perf_counter() - t0:.0f}s)", flush=True)
 
@@ -108,7 +112,7 @@ def main() -> None:
     for it in range(args.iters):
         beta = args.beta_decay ** it if it > 0 else 1.0
         seeds = [train_seed_base + it * args.levels + i for i in range(args.levels)]
-        jobs = [(config, args.mode, c, weights, beta, None, 17 * it + k, args.target, args.critical_weight, args.q_clip)
+        jobs = [(config, args.mode, c, weights, beta, planner_cfg, 17 * it + k, args.target, args.critical_weight, args.q_clip)
                 for k, c in enumerate(chunks(seeds, args.workers))]
         t_it = time.perf_counter()
         parts = pool.map(collect_worker, jobs)

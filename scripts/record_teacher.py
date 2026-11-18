@@ -29,6 +29,7 @@ def main() -> None:
     p.add_argument('--seed-start', type=int, default=200_000)
     p.add_argument('--plan-every', type=int, default=2)
     p.add_argument('--workers', type=int, default=3)
+    p.add_argument('--teacher-style', default='speedrunner', help="'speedrunner' (default) or 'collector'")
     p.add_argument('--out', required=True)
     args = p.parse_args()
 
@@ -37,7 +38,7 @@ def main() -> None:
     chunks = [seeds[i::args.workers] for i in range(args.workers)]
     start = time.perf_counter()
     with mp.get_context('fork').Pool(args.workers) as pool:
-        parts = pool.map(record_levels, [(config, c, args.plan_every) for c in chunks])
+        parts = pool.map(record_levels, [(config, c, args.plan_every, args.teacher_style) for c in chunks])
     levels = sorted((lv for part in parts for lv in part), key=lambda lv: lv['seed'])
     env = make_env(config)
     base = env.unwrapped
