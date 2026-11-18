@@ -109,15 +109,23 @@ def replay_features(config: dict, mode: str, level: dict, drop_extra: int = 0) -
     return np.stack(rows)
 
 
-def offline_scores(weights: np.ndarray, feats: np.ndarray, targets: np.ndarray) -> dict[str, float]:
+def offline_scores(weights: np.ndarray, feats: np.ndarray, scores: np.ndarray) -> dict[str, float]:
+    """
+    Scores the readout's greedy choice against the planner's raw action scores:
+    regret = best score - score of the chosen action.
+    - ``good_rate``: regret < 0.5 (as good as the teacher; idling or backing off already costs ~1)
+    - ``fatal_rate``: regret >= 100 (the chosen action leads to death within the planning horizon)
+    - ``critical_fatal_rate``: fatal rate on frames where at least one action is fatal.
+    """
     pred = np.argmax(feats @ weights, axis=1)
-    chosen = targets[np.arange(len(pred)), pred]
-    spread = targets.max(axis=1) - targets.min(axis=1)
-    critical = spread >= 0.5
+    regret = scores.max(axis=1) - scores[np.arange(len(pred)), pred]
+    critical = (scores.max(axis=1) - scores.min(axis=1)) >= 100.0
     return {
-        'safe_rate': float(np.mean(chosen >= 0.95)),
-        'critical_safe_rate': float(np.mean(chosen[critical] >= 0.95)) if critical.any() else float('nan'),
-        'critical_fraction': float(np.mean(critical)),
+        'good_rate': float(np.mean(regret < 0.5)),
+        'fatal_rate': float(np.mean(regret >= 100.0)),
+        'critical_fatal_rate': float(np.mean(regret[critical] >= 100.0)) if critical.any() else float('nan'),
+        'critical_frames': int(critical.sum()),
+        'mean_regret_clipped': float(np.mean(np.minimum(regret, 10.0))),
     }
 
 
@@ -171,31 +179,32 @@ def evaluate_feature_map(
     drop_extra: int = 0,
     fit: str = 'ridge',
     device: str = 'cpu',
+    q_clip: float = 5.0,
 ) -> dict:
     """Fits ridge readouts on the training levels and scores them on held-out levels."""
     n_test = max(1, int(round(len(levels) * test_fraction)))
     train, test = levels[:-n_test], levels[-n_test:]
 
     def build(split):
-        feats, targs, labels = [], [], []
+        feats, targs, labels, raw = [], [], [], []
         for lv in split:
             f = replay_features(config, mode, lv, drop_extra)
             feats.append(f)
             for s in lv['scores']:
                 labels.append(int(np.argmax(s)))
-            targs.append(np.stack([make_targets(s, int(np.argmax(s)), target) for s in lv['scores']]))
-        return np.concatenate(feats), np.concatenate(targs), np.asarray(labels)
+            targs.append(np.stack([make_targets(s, int(np.argmax(s)), target, q_clip) for s in lv['scores']]))
+            raw.append(lv['scores'])
+        return np.concatenate(feats), np.concatenate(targs), np.asarray(labels), np.concatenate(raw)
 
     start = time.perf_counter()
-    f_tr, y_tr, l_tr = build(train)
-    f_te, y_te_raw, _ = build(test)
-    # Offline scoring always uses q-style targets (which actions are safe), whatever the fit target.
-    y_te = np.stack([make_targets(s, 0, 'q') for lv in test for s in lv['scores']])
-    y_tr_q = np.stack([make_targets(s, 0, 'q') for lv in train for s in lv['scores']])
+    f_tr, y_tr, l_tr, s_tr = build(train)
+    f_te, _y_te, _l_te, s_te = build(test)
+    y_tr_q = np.stack([make_targets(s, 0, 'graded' if target == 'graded' else 'q', q_clip)
+                       for lv in train for s in lv['scores']])
     results = {}
     if fit == 'ridge':
         acc = RidgeAccumulator(f_tr.shape[1], y_tr.shape[1])
-        acc.add(f_tr, l_tr, y_tr if target == 'q' else None, critical_weight=critical_weight)
+        acc.add(f_tr, l_tr, None if target == 'onehot' else y_tr, critical_weight=critical_weight)
         solve = acc.solve
     elif fit == 'safe_ce':
         def solve(alpha):
@@ -204,8 +213,9 @@ def evaluate_feature_map(
         raise ValueError(f'unknown fit {fit!r}')
     for alpha in alphas:
         w = solve(alpha)
-        results[alpha] = {'train': offline_scores(w, f_tr, y_tr_q), 'test': offline_scores(w, f_te, y_te)}
-    best_alpha = max(results, key=lambda a: results[a]['test']['critical_safe_rate'])
+        results[alpha] = {'train': offline_scores(w, f_tr, s_tr), 'test': offline_scores(w, f_te, s_te)}
+    # Few levels: the reported alpha is the one with the lowest test fatal rate (optimistic; see docs).
+    best_alpha = min(results, key=lambda a: (results[a]['test']['fatal_rate'], -results[a]['test']['good_rate']))
     return {
         'fit': fit,
         'mode': mode,

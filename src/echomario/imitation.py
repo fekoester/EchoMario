@@ -98,7 +98,8 @@ def run_episode(
     collect: bool = False,
     plan_every: int = 2,
     target: str = 'onehot',
-    q_clip: float = 30.0,
+    q_clip: float = 5.0,
+    student_hold: int = 1,
 ):
     """
     Plays one level.
@@ -106,8 +107,8 @@ def run_episode(
     With a ``planner`` the expert re-plans every ``plan_every`` frames; each plan labels the current
     state (when ``collect``) and decides who controls the next ``plan_every`` frames: the expert
     (probability ``beta``, or always when there are no weights yet) holding its action, or the
-    learner acting greedily every frame. Without a planner the learner plays alone.
-    The reservoir sees every frame either way.
+    learner acting greedily (re-deciding every ``student_hold`` frames). Without a planner the
+    learner plays alone. The reservoir sees every frame either way.
     """
     obs, _ = env.reset(options={'level_seed': int(level_seed)})
     features.reset()
@@ -124,9 +125,11 @@ def run_episode(
     truncated = False
     expert_in_control = False
     expert_action = None
+    learner_action = None
     while True:
         f = features.step(obs)
-        learner_action = None if weights is None else int(np.argmax(f @ weights))
+        if weights is not None and steps % student_hold == 0:
+            learner_action = int(np.argmax(f @ weights))
         if planner is not None and steps % plan_every == 0:
             scores = planner.scores(env)
             expert_action = planner.choose(scores)
@@ -157,17 +160,19 @@ def run_episode(
     return stats
 
 
-TARGET_MODES = ('onehot', 'q')
+TARGET_MODES = ('onehot', 'q', 'graded')
 
 
-def make_targets(scores: np.ndarray, expert_action: int, mode: str, q_clip: float = 30.0) -> np.ndarray:
+def make_targets(scores: np.ndarray, expert_action: int, mode: str, q_clip: float = 5.0) -> np.ndarray:
     """
     Regression targets for one planned state.
 
     ``onehot``: 1 for the planner's choice. ``q``: how close each action's planned score is to the
     best one, 1 for the best and 0 for anything ``q_clip`` or more worse (e.g. every deadly action).
-    The q targets keep the information that several actions are equally safe, which one-hot labels
-    throw away with an arbitrary tie-break.
+    The q targets keep the information that several actions are equally good, which one-hot labels
+    throw away with an arbitrary tie-break. ``q_clip`` must be small (a few reward points): idling
+    for a planning step costs only ~1 point of progress, and with a large clip that difference
+    drowns in readout noise, so the student learns to stand still until the stall timeout.
     """
     if mode == 'onehot':
         y = np.zeros(len(scores), dtype=np.float32)
@@ -176,6 +181,12 @@ def make_targets(scores: np.ndarray, expert_action: int, mode: str, q_clip: floa
     if mode == 'q':
         rel = np.clip(np.asarray(scores, dtype=np.float64) - np.max(scores), -q_clip, 0.0)
         return (1.0 + rel / q_clip).astype(np.float32)
+    if mode == 'graded':
+        # Two scales in one target: losing progress costs up to 0.5 (saturating at q_clip points),
+        # dying (>= 100 points worse, i.e. the planner's death penalty) costs the other 0.5.
+        regret = np.max(scores) - np.asarray(scores, dtype=np.float64)
+        y = 1.0 - 0.5 * np.minimum(regret, q_clip) / q_clip - 0.5 * (regret >= 100.0)
+        return y.astype(np.float32)
     raise ValueError(f'target must be one of {TARGET_MODES}')
 
 
@@ -262,7 +273,8 @@ def summarize(stats: list[EpisodeStats]) -> dict[str, float]:
 # ----- worker entry points (module level so multiprocessing can pickle them) -----
 
 def collect_worker(args: tuple) -> tuple[RidgeAccumulator, list[EpisodeStats], float]:
-    config, mode, seeds, weights, beta, planner_cfg, worker_seed, target, critical_weight = args
+    config, mode, seeds, weights, beta, planner_cfg, worker_seed, target, critical_weight, *rest = args
+    q_clip = float(rest[0]) if rest else 5.0
     start = time.perf_counter()
     env = make_env(discrete_config(config))
     features = FeatureMap(config, int(env.observation_space.shape[0]), mode)
@@ -272,7 +284,8 @@ def collect_worker(args: tuple) -> tuple[RidgeAccumulator, list[EpisodeStats], f
     stats = []
     for seed in seeds:
         ep, feats, labels, targets = run_episode(
-            env, features, seed, weights=weights, planner=planner, beta=beta, rng=rng, collect=True, target=target
+            env, features, seed, weights=weights, planner=planner, beta=beta, rng=rng, collect=True, target=target,
+            q_clip=q_clip,
         )
         acc.add(feats, labels, targets, critical_weight=critical_weight)
         stats.append(ep)
@@ -281,10 +294,11 @@ def collect_worker(args: tuple) -> tuple[RidgeAccumulator, list[EpisodeStats], f
 
 
 def eval_worker(args: tuple) -> list[EpisodeStats]:
-    config, mode, seeds, weights = args
+    config, mode, seeds, weights, *rest = args
+    student_hold = int(rest[0]) if rest else 1
     env = make_env(discrete_config(config))
     features = FeatureMap(config, int(env.observation_space.shape[0]), mode)
-    out = [run_episode(env, features, seed, weights=weights) for seed in seeds]
+    out = [run_episode(env, features, seed, weights=weights, student_hold=student_hold) for seed in seeds]
     env.close()
     return out
 

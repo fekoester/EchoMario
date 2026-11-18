@@ -52,6 +52,8 @@ def run_variant(args: tuple) -> dict:
     critical_weight = 0.0
     fit = 'ridge'
     device = 'cpu'
+    q_clip = 5.0
+    target = 'q'
     for item in filter(None, overrides.split(',')):
         key, value = item.split('=', 1)
         value = yaml.safe_load(value)
@@ -65,17 +67,22 @@ def run_variant(args: tuple) -> dict:
             fit = str(value)
         elif key == 'device':
             device = str(value)
+        elif key == 'q_clip':
+            q_clip = float(value)
+        elif key == 'target':
+            target = str(value)
         else:
             cfg['reservoir'][key] = value
     result = evaluate_feature_map(cfg, mode, _LEVELS, drop_extra=drop_extra, critical_weight=critical_weight,
-                                  fit=fit, device=device)
+                                  fit=fit, device=device, q_clip=q_clip, target=target)
     result['name'] = name
     result['spec'] = spec
     best = result['best']
-    print(f"{name:28s} dim={result['dim']:5d} train safe={best['train']['safe_rate']:.3f} "
-          f"crit={best['train']['critical_safe_rate']:.3f} | test safe={best['test']['safe_rate']:.3f} "
-          f"crit={best['test']['critical_safe_rate']:.3f} alpha={result['best_alpha']:g} ({result['seconds']}s)",
-          flush=True)
+    tr, te = best['train'], best['test']
+    print(f"{name:28s} dim={result['dim']:5d} train good={tr['good_rate']:.3f} fatal={tr['fatal_rate']:.4f} | "
+          f"test good={te['good_rate']:.3f} fatal={te['fatal_rate']:.4f} crit_fatal={te['critical_fatal_rate']:.3f} "
+          f"(n_crit={te['critical_frames']}) regret={te['mean_regret_clipped']:.2f} alpha={result['best_alpha']:g} "
+          f"({result['seconds']}s)", flush=True)
     return result
 
 

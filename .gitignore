@@ -31,6 +31,9 @@ outputs/
 *.npz
 *.mp4
 *.gif
+# ...except the README / docs media, which must be committed for GitHub to show them
+!docs/media/*.gif
+!docs/media/*.png
 
 # Temporary configs / notebooks
 configs/*_smoke.yaml

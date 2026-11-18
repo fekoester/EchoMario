@@ -44,6 +44,7 @@ def parse_args():
     p.add_argument('--config', required=True)
     p.add_argument('--mode', choices=FEATURE_MODES, default='reservoir')
     p.add_argument('--target', choices=TARGET_MODES, default='q', help='onehot labels or planner-score (q) targets')
+    p.add_argument('--q-clip', type=float, default=5.0, help='score gap that maps to target 0 (q targets)')
     p.add_argument('--critical-weight', type=float, default=0.0,
                    help='upweight frames where some action is fatal (weight 1 + k * target spread)')
     p.add_argument('--iters', type=int, default=4, help='DAgger iterations (the first one is pure expert data)')
@@ -107,7 +108,7 @@ def main() -> None:
     for it in range(args.iters):
         beta = args.beta_decay ** it if it > 0 else 1.0
         seeds = [train_seed_base + it * args.levels + i for i in range(args.levels)]
-        jobs = [(config, args.mode, c, weights, beta, None, 17 * it + k, args.target, args.critical_weight)
+        jobs = [(config, args.mode, c, weights, beta, None, 17 * it + k, args.target, args.critical_weight, args.q_clip)
                 for k, c in enumerate(chunks(seeds, args.workers))]
         t_it = time.perf_counter()
         parts = pool.map(collect_worker, jobs)
