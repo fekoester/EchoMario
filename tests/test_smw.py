@@ -24,12 +24,13 @@ def test_tile_classes():
 
 
 def test_env_obs_grid_and_sim_state_round_trip():
-    from echomario.envs.smw_env import OBS_DIM, SMWEnv
+    from echomario.envs.smw_env import OBS_DIM, SMWEnv, grid_kwargs, smw_obs_dim
 
     env = SMWEnv('YoshiIsland2')
     try:
         obs, info = env.reset()
         assert obs.shape == (OBS_DIM,) and info['x'] > 0
+        assert smw_obs_dim({'env': {'grid': grid_kwargs({})}}) == OBS_DIM
         assert env.grid().sum() > 0  # ground is visible
         for _ in range(40):
             env.step(2)

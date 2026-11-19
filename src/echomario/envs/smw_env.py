@@ -81,13 +81,17 @@ class SMWEnv(gym.Env):
     metadata = {'render_modes': ['rgb_array'], 'render_fps': 30}
 
     def __init__(self, level: str = 'YoshiIsland2', max_steps: int = 3000, stagnation_steps: int = 300,
-                 render_mode: str | None = 'rgb_array'):
+                 render_mode: str | None = 'rgb_array', rows: int = ROWS, cols: int = COLS,
+                 rows_above: int = ROWS_ABOVE, cols_behind: int = COLS_BEHIND):
         import stable_retro as retro
 
         self.level = level
         self.max_steps = int(max_steps)
         self.stagnation_steps = int(stagnation_steps)
         self.render_mode = render_mode
+        self.rows, self.cols, self.rows_above, self.cols_behind = int(rows), int(cols), int(rows_above), int(cols_behind)
+        self.screen_shape = (self.rows, self.cols, len(CHANNEL_NAMES))
+        self.obs_dim = self.rows * self.cols * len(CHANNEL_NAMES) + N_SCALARS
         self.retro = retro.make(GAME, state=level, render_mode=None, inttype=retro.data.Integrations.ALL)
         self.em = self.retro.unwrapped.em
         buttons = self.retro.unwrapped.buttons
@@ -98,8 +102,8 @@ class SMWEnv(gym.Env):
                 m[buttons.index(n)] = 1
             self._masks.append(m)
         self.action_space = spaces.Discrete(len(ACTION_NAMES))
-        self.observation_space = spaces.Box(-4.0, 4.0, shape=(OBS_DIM,), dtype=np.float32)
-        self.screen_dim = ROWS * COLS * len(CHANNEL_NAMES)
+        self.observation_space = spaces.Box(-4.0, 4.0, shape=(self.obs_dim,), dtype=np.float32)
+        self.screen_dim = self.rows * self.cols * len(CHANNEL_NAMES)
         self.track = _Track()
         self.goal_x = 1
         self._frame = None
@@ -139,14 +143,15 @@ class SMWEnv(gym.Env):
 
     # ----------------------------------------------------------------- observation
     def grid(self, w: np.ndarray | None = None) -> np.ndarray:
-        """(ROWS, COLS, CHANNELS) one-hot tile grid centred on Mario."""
+        """(rows, cols, channels) one-hot tile grid around Mario."""
         w = self._wram() if w is None else w
         m = self.mario(w)
         feet_ty = (m['y'] + 24) // 16
         mx_t = (m['x'] + 8) // 16
-        tys = np.arange(feet_ty - ROWS_ABOVE, feet_ty - ROWS_ABOVE + ROWS)
-        txs = np.arange(mx_t - COLS_BEHIND, mx_t - COLS_BEHIND + COLS)
-        g = np.zeros(SCREEN_SHAPE, np.float32)
+        top, left = feet_ty - self.rows_above, mx_t - self.cols_behind
+        tys = np.arange(top, top + self.rows)
+        txs = np.arange(left, left + self.cols)
+        g = np.zeros(self.screen_shape, np.float32)
         ty, tx = np.meshgrid(tys, txs, indexing='ij')
         inside = (ty >= 0) & (ty < 27) & (tx >= 0) & (tx < 16 * max(1, m['screens']))
         idx = (tx // 16) * 0x1B0 + ty * 16 + (tx % 16)
@@ -161,9 +166,9 @@ class SMWEnv(gym.Env):
             if num in HARMLESS_SPRITES:
                 continue
             ch = 4 if num in ITEM_SPRITES else 3
-            rr = (sy + 8) // 16 - (feet_ty - ROWS_ABOVE)
-            cc = (sx + 8) // 16 - (mx_t - COLS_BEHIND)
-            if 0 <= rr < ROWS and 0 <= cc < COLS:
+            rr = (sy + 8) // 16 - top
+            cc = (sx + 8) // 16 - left
+            if 0 <= rr < self.rows and 0 <= cc < self.cols:
                 g[rr, cc, ch] = 1.0
         return g
 
@@ -271,5 +276,18 @@ class SMWEnv(gym.Env):
         self._power = s[2]
 
 
-def smw_screen_shape() -> tuple[int, int, int]:
-    return SCREEN_SHAPE
+def grid_kwargs(config: dict) -> dict:
+    """SMWEnv grid arguments stored in a run config (``env.grid``); defaults for older runs."""
+    g = dict(config.get('env', {}).get('grid', {}))
+    return {'rows': int(g.get('rows', ROWS)), 'cols': int(g.get('cols', COLS)),
+            'rows_above': int(g.get('rows_above', ROWS_ABOVE)), 'cols_behind': int(g.get('cols_behind', COLS_BEHIND))}
+
+
+def smw_screen_shape(config: dict | None = None) -> tuple[int, int, int]:
+    g = grid_kwargs(config or {})
+    return g['rows'], g['cols'], len(CHANNEL_NAMES)
+
+
+def smw_obs_dim(config: dict | None = None) -> int:
+    r, c, ch = smw_screen_shape(config)
+    return r * c * ch + N_SCALARS

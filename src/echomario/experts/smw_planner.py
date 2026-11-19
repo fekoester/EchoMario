@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from echomario.envs.smw_env import ACTION_NAMES, COLS_BEHIND, ROWS_ABOVE, SMWEnv
+from echomario.envs.smw_env import ACTION_NAMES, SMWEnv
 
 A = {n: i for i, n in enumerate(ACTION_NAMES)}
 
@@ -28,6 +28,8 @@ def _macro(name: str, n: int) -> list[int]:
         return [A['right_run_jump']] * n
     if name == 'wait_hop':
         return [A['idle']] * 10 + _macro('hop', n - 10)
+    if name == 'wait_long':  # moving platforms, enemies passing by
+        return [A['idle']] * 20 + _macro('hop', n - 20)
     if name == 'back_hop':
         return [A['left']] * 6 + _macro('hop', n - 6)
     if name == 'runup':  # back up for a running start, then run and jump (wide gaps)
@@ -42,6 +44,9 @@ class SMWPlannerConfig:
     first_hold: int = 4
     horizon: int = 30
     continuations: tuple[str, ...] = ('run', 'hop', 'longjump', 'wait_hop', 'runup')
+    # if > 0 and airborne when the look-ahead ends, keep going until landed (or dead). Tried 40:
+    # twice as slow and no better on YoshiIsland3/4, DonutPlains4, Forest3, so off by default.
+    settle_steps: int = 0
     death_penalty: float = 2000.0
     hurt_penalty: float = 300.0
     goal_bonus: float = 3000.0
@@ -64,7 +69,7 @@ class SMWPlanner:
         if m['on_ground'] or m['vy'] <= 0 or m['y'] <= start_y + 8:
             return False
         g = env.grid()
-        below = g[ROWS_ABOVE:, max(0, COLS_BEHIND - 1):COLS_BEHIND + 2, :2]
+        below = g[env.rows_above:, max(0, env.cols_behind - 1):env.cols_behind + 2, :2]
         return not below.any()
 
     def _run(self, env: SMWEnv, actions: list[int], start_x: int, start_y: int | None = None) -> tuple[float, bool]:
@@ -79,6 +84,20 @@ class SMWPlanner:
                 if info['died']:
                     return env.track.max_x - start_x - self.cfg.death_penalty, True
                 return env.track.max_x - start_x + self.cfg.goal_bonus, True
+        if start_y is not None and self.cfg.settle_steps and not env.mario()['on_ground']:
+            # A plan that ends in mid-air over a pit is not a good plan yet: let it land.
+            last = actions[-1] if actions else A['right_run']
+            for _ in range(self.cfg.settle_steps):
+                env.emulate(last)
+                _, _, terminated, _, info = env._after_step(compute_obs=False)
+                self.rollout_steps += 1
+                if terminated or info['hurt']:
+                    if info['died'] or info['hurt']:
+                        pen = self.cfg.death_penalty if info['died'] else self.cfg.hurt_penalty
+                        return env.track.max_x - start_x - pen, True
+                    return env.track.max_x - start_x + self.cfg.goal_bonus, True
+                if env.mario()['on_ground']:
+                    break
         if start_y is not None and self._doomed(env, start_y):
             return env.track.max_x - start_x - self.cfg.death_penalty, True
         return float(env.track.max_x - start_x), False

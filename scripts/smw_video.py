@@ -24,7 +24,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from echomario.envs.smw_env import ACTION_NAMES, CHANNEL_NAMES, COLS, COLS_BEHIND, OBS_DIM, ROWS, ROWS_ABOVE, SMWEnv
+from echomario.envs.smw_env import ACTION_NAMES, CHANNEL_NAMES, SMWEnv, grid_kwargs
 from echomario.experts.smw_planner import SMWPlanner
 from echomario.imitation import FeatureMap
 
@@ -56,15 +56,16 @@ def diverging(v: np.ndarray) -> np.ndarray:
     return out.astype(np.uint8)
 
 
-def draw_grid(img, grid: np.ndarray, x0: int, y0: int, cell: int):
-    for r in range(ROWS):
-        for c in range(COLS):
+def draw_grid(img, grid: np.ndarray, x0: int, y0: int, cell: int, rows_above: int, cols_behind: int):
+    rows, cols = grid.shape[:2]
+    for r in range(rows):
+        for c in range(cols):
             colour = (34, 34, 44)
             for k, name in enumerate(CHANNEL_NAMES):
                 if grid[r, c, k] > 0:
                     colour = CH_COLOURS[name]
             cv2.rectangle(img, (x0 + c * cell, y0 + r * cell), (x0 + (c + 1) * cell - 2, y0 + (r + 1) * cell - 2), colour, -1)
-    mx, my = x0 + COLS_BEHIND * cell, y0 + (ROWS_ABOVE - 1) * cell
+    mx, my = x0 + cols_behind * cell, y0 + (rows_above - 1) * cell
     cv2.rectangle(img, (mx, my), (mx + cell - 2, my + 2 * cell - 2), (240, 40, 40), 2)
 
 
@@ -90,10 +91,11 @@ def main() -> None:
         config, mode = res['config'], res['mode']
     weights = np.load(run / args.readout) if run else None
     trained_on = set(res['args']['train_levels'].split(',')) if res else set()
+    hold = int(res['args'].get('plan_every', 4)) if res else 4
 
-    env = SMWEnv(args.level, max_steps=args.max_steps)
+    env = SMWEnv(args.level, max_steps=args.max_steps, **grid_kwargs(config))
     obs, info = env.reset()
-    fm = FeatureMap(config, OBS_DIM, mode)
+    fm = FeatureMap(config, env.obs_dim, mode)
     fm.reset()
     size = int(config['reservoir']['size'])
     side = int(np.ceil(np.sqrt(size)))
@@ -130,7 +132,7 @@ def main() -> None:
             elif planner is not None:
                 if step % 4 == 0:
                     action = planner.act(env)
-            else:
+            elif step % hold == 0:  # the student holds each choice for the teacher's planning interval
                 action = int(np.argmax(q))
             played.append(action)
 
@@ -150,11 +152,12 @@ def main() -> None:
         # panel 1: what the reservoir reads
         x1 = 560
         text(img, '1. input: tile grid read from RAM', (x1, 80), 0.55, ACCENT)
-        draw_grid(img, obs[: ROWS * COLS * len(CHANNEL_NAMES)].reshape(ROWS, COLS, -1), x1, 92, 16)
+        cell_px = max(8, min(16, 320 // env.cols, 256 // env.rows))
+        draw_grid(img, obs[: env.screen_dim].reshape(env.rows, env.cols, -1), x1, 92, cell_px, env.rows_above, env.cols_behind)
         for k, name in enumerate(CHANNEL_NAMES):
             cv2.rectangle(img, (x1 + k * 64, 356), (x1 + k * 64 + 10, 366), CH_COLOURS[name], -1)
             text(img, name, (x1 + k * 64 + 14, 366), 0.38, DIM)
-        text(img, f'+ speed, on ground, power-up = {OBS_DIM} inputs', (x1, 386), 0.4, DIM)
+        text(img, f'+ speed, on ground, power-up = {env.obs_dim} inputs', (x1, 386), 0.4, DIM)
 
         # panel 2: reservoir state
         x2 = 900
