@@ -91,13 +91,57 @@ a student death in a labelled episode rewinds 2 s using a save-state (reservoir 
 The teacher then drives for 80 steps and hands control back. One episode now covers most of
 the level.
 
-RESULTS_PLACEHOLDER
+### Results (7 training levels, 7 held-out levels, best of 8 DAgger rounds)
+
+Mean progress (fraction of the level) on the training levels and on held-out levels:
+
+| | training levels | held-out levels | levels finished |
+|---|---:|---:|---:|
+| teacher (look-ahead planner) | ~0.80 | – | 4 of 7 training |
+| reservoir student, plain DAgger (3 rounds) | 0.28 | 0.09 | Yoshi's Island 2 |
+| reservoir student, DAgger with rescues (best round) | 0.40 | 0.09 | Yoshi's Island 2 |
+| same, taller 22 × 24 view (see below) | **0.48** | 0.09 | Yoshi's Island 2 |
+| bunny-hop (constant run + jump) | 0.35 | 0.12 | Yoshi's Island 2 |
+| hold right + run | 0.09 | 0.08 | none |
+
+Per training level (student with rescues vs bunny-hop): Yoshi's Island 1 0.63 / 0.62,
+Yoshi's Island 2 finished / finished, Donut Plains 1 0.32 / 0.28, Forest of Illusion 1 0.08 / 0.08,
+Donut Plains 5 0.36 / 0.14, Yoshi's Island 4 0.20 / 0.28, Donut Plains 4 0.26 / 0.09.
+
+What this says:
+
+- **The reservoir does play the real game**, from RAM-derived tiles, with only a linear readout
+  trained and no reward. It runs, times jumps over gaps and enemies, and finishes Yoshi's Island 2.
+- **But on real SMW it is only a little better than the bunny-hop floor**, and only on levels it
+  was trained on. It clearly beats bunny-hopping on Donut Plains 4 and 5, ties on the rest, and does
+  not transfer to unseen levels. On the toy game the same recipe reached 55 % of unseen levels
+  against a 40 % floor.
+- **Data, not just the readout, was the first bottleneck.** Plain DAgger plateaued at 0.28 because
+  the student never got deep into a level. Rescues tripled the labels per round (16k after 8 rounds
+  vs ~4k) and lifted training progress. The agreement with the teacher's choice stays near 0.45,
+  and progress moves up and down between rounds by ±0.1 (7 levels, one episode each).
+- **The teacher is the second bottleneck.** It finishes 4 of the 14 levels it was run on. Its
+  1-second look-ahead cannot plan around moving platforms or walls of turn blocks.
+
+**A taller view helps.** In a high jump Mario rises out of the 16-row window and the reservoir
+loses sight of the ground it has to land on. With a 22 × 24 window (12 rows above the feet, 6
+columns behind; `--grid 22,24,12,6`, 2644 inputs) and everything else unchanged:
+
+| | best round | mean of last 3 rounds | held-out |
+|---|---:|---:|---:|
+| 16 × 20 window, rescues | 0.40 | 0.32 | 0.09 |
+| 22 × 24 window, rescues | **0.48** | **0.44** | 0.09 |
+
+Per training level in the best round: Yoshi's Island 1 0.43, Yoshi's Island 2 finished, Donut Plains 1
+0.60, Forest of Illusion 1 0.30, Donut Plains 5 0.31, Yoshi's Island 4 0.61, Donut Plains 4 0.17.
+That is now clearly above bunny-hopping (0.35) on the training levels. Held-out levels do not move:
+the student learns these levels, not yet the game.
 
 ## Videos
 
 ```bash
 python scripts/smw_video.py --teacher --level YoshiIsland2 --out outputs/smw_teacher.mp4   # writes .actions.json
-python scripts/smw_video.py --run runs/smw/rescue --level DonutPlains1 --out outputs/smw_student.mp4
+python scripts/smw_video.py --run runs/smw/rescue_tall --level DonutPlains1 --out outputs/smw_student.mp4
 ```
 
 Each video shows the game, the tile grid the reservoir reads, all reservoir neurons as a heat map,
