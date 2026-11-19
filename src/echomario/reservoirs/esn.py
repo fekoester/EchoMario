@@ -277,6 +277,10 @@ def load_reservoir_from_state_dict(state: dict[str, Any]) -> ReservoirLike:
 def screen_shape_from_config(config: dict[str, Any]) -> tuple[int, int, int] | None:
     """(rows, cols, channels) of the toy platformer's tile screen, or None for other envs."""
     env_cfg = config.get("env", {})
+    if env_cfg.get("name") == "smw":
+        from echomario.envs.smw_env import SCREEN_SHAPE
+
+        return SCREEN_SHAPE
     if env_cfg.get("name") != "toy_platformer" or env_cfg.get("observation_mode", "full_screen") != "full_screen":
         return None
     from echomario.envs.toy_platformer_env import ToyPlatformerEnv
