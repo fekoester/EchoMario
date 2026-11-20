@@ -26,6 +26,10 @@ htmlcov/
 # Experiment artifacts
 runs/
 outputs/
+# game ROMs are never committed
+*.sfc
+*.smc
+*.nes
 *.pt
 *.pth
 *.npz

@@ -156,6 +156,29 @@ tree does not contain. Speedrunner stays the default teacher, so the results abo
 The student copies the running and jumping, not the rest. It runs faster than its teacher, presses
 fewer buttons, rarely stomps and takes fewer coins.
 
+**Does a student copy the collector?** Gaps stage, which has coins, ? blocks and mushrooms but
+no enemies. Both students use the same settings (3000-neuron local multi-timescale reservoir, q targets,
+8 DAgger rounds) and differ only in `--teacher-style`:
+
+| | speedrunner teacher | collector teacher | student of speedrunner | student of collector |
+|---|---:|---:|---:|---:|
+| levels finished | 100 % | 100 % | 55 % | 40 % |
+| progress | 1.00 | 1.00 | 0.84 | 0.69 |
+| coins taken (of reachable) | 26 % | 69 % | 18 % | 32 % |
+| ? blocks bumped | 14 % | 22 % | 1 % | 5 % |
+| mushrooms collected | 0 of 2 | 1 of 7 | 0 | 0 |
+| speed when finishing | 6.9 tiles/s | 6.3 tiles/s | 9.3 tiles/s | 9.2 tiles/s |
+| button changes per second | 4.3 | 4.8 | 1.3 | 1.2 |
+
+The collector's student takes almost twice the share of coins and bumps a few ? blocks, so some of the
+style does transfer. But it runs exactly as fast as the speedrunner's student and never backtracks.
+It picks up the coins that lie along a run-and-jump line (jumping at a coin row rather than past it)
+and does not copy the teacher's detours, waits under blocks or slow-downs. It also finishes fewer
+levels (40 % vs 55 %). With single runs on 20 levels that gap is within noise (about ±11 points),
+but it fits the picture that bonus-driven labels make the targets harder to fit. This is the same
+limit as before: the linear readout learns what goes with running and jumping, not multi-step plans.
+Results: `runs/imitation/gaps_res3000_collector`, `runs/collector/*.json`.
+
 <p align="center">
   <img src="media/teacher_full_level.gif" width="432" alt="Planner teacher on a full-difficulty level">
   <br>

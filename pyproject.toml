@@ -38,6 +38,9 @@ dev = [
 mario = [
   "gym-super-mario-bros"
 ]
+smw = [
+  "stable-retro",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
