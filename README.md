@@ -5,24 +5,43 @@
 
 **Can a fixed, random recurrent network control a platformer when only a linear readout is trained?**
 
-EchoMario is a research codebase for frozen-reservoir reinforcement learning. A fixed echo state network
-turns the screen into a rich dynamical state, and PPO trains only the policy/value readout on top of it. The
-same training loop also runs a trainable **GRU**, a **CNN** and **linear** baselines, so the frozen reservoir can be
-compared fairly against learned alternatives.
+EchoMario is a research codebase for frozen-reservoir control. A fixed echo state network
+turns the screen into a rich dynamical state, and only a linear readout on top of it is trained. That
+readout is trained either **by imitation** (ridge regression on a look-ahead planner's labels, with DAgger;
+new in 0.3) or **by PPO**. The same PPO loop also runs a trainable **GRU**, a **CNN** and **linear**
+baselines, so the frozen reservoir can be compared fairly against learned alternatives.
 
 <p align="center">
-  <img src="docs/media/demo_reservoir_agent.gif" width="720" alt="Reservoir agent finishing a procedurally generated level">
+  <img src="docs/media/imitation_reservoir_gaps.gif" width="432" alt="Reservoir student finishing an unseen gaps level">
   <br>
-  <em>An 800-node frozen reservoir with a trained linear readout, after about 5 minutes of CPU training on the easy curriculum stage
-  (it finishes 75 % of the unseen evaluation levels). The right-hand panels show the readout's action, the reservoir input,
-  the top contributions to the decision, and the live reservoir activations.</em>
+  <em>A frozen 3000-neuron reservoir with a ridge-regression readout (no reward, no backprop) finishing an
+  unseen level with gaps, bridges and platforms. It finishes 55 % of unseen levels on this stage, against
+  40 % for the best constant action and 0 % for a linear readout of the current frame.</em>
 </p>
+
+### Findings so far (0.3)
+
+The full write-up is [docs/imitation.md](docs/imitation.md).
+
+- **A frozen reservoir can learn to play when it is taught.** With ridge-regression readouts trained on a
+  planner's labels, a 3000-neuron reservoir finishes 55 % of unseen gaps levels (84 % progress). A linear
+  readout of the current frame, trained on the same data, finishes none. The reservoir's memory is what
+  makes the difference.
+- **Check results against the bunny-hop baseline.** Holding "right + run + jump" finishes 75 % of the stage-1
+  levels (exactly the 0.2 demo's score), 40 % of gaps levels and 30 % of full levels. On the harder stages
+  PPO converges to that policy. Use `scripts/constant_baselines.py` before reading any success rate.
+- **Moving enemies are the open problem.** On stages with moving enemies, a linear readout of this reservoir
+  does not yet beat the floor, even though the planner teacher finishes 85–95 % of those levels.
 
 ## Highlights
 
 - **Original procedural platformer**: gaps, bridges, multi-floor platforms, moving enemies, coins,
   question blocks and items, with seeded train/eval levels. No ROMs or Nintendo assets are included.
 - **Four agent families on one PPO loop**: frozen reservoir + readout, end-to-end GRU (truncated BPTT), tile-CNN and linear.
+- **Imitation pipeline (0.3)**: a look-ahead planner teacher (95 % on full-difficulty levels), closed-form ridge
+  readouts, DAgger, and offline comparison of feature maps on a recorded teacher dataset.
+- **Reservoir options (0.3)**: local receptive-field input (`reservoir.input_structure: local`) and
+  multi-timescale leaks (`reservoir.leak_rate_min/max`).
 - **Gymnasium environments**: `gym.make("EchoMario/ToyPlatformer-v0")` works anywhere once `echomario` is installed.
 - **Sweeps**: grid search over any config value, with multiple seeds and aggregated mean ± std tables.
 - **Visual tooling**: videos with live reservoir panels, training-evolution videos, checkpoint sweeps and run comparisons.
@@ -41,6 +60,10 @@ pip install -e .
 | `viz` | opencv (headless), matplotlib | `env.render()`, `record_video.py`, plotting scripts |
 | `play` | pygame | `explore_toy_world.py`, `play.py` |
 | `dev` | pytest, ruff, `viz` | running the tests |
+
+**AMD GPUs without official ROCm support (e.g. RX 5700 / gfx1010).** Use torch 1.13.1 + ROCm 5.2 with
+`HSA_OVERRIDE_GFX_VERSION=10.3.0`. torch 2.x ROCm wheels crash on most kernels on these cards.
+[docs/imitation.md](docs/imitation.md#amd-gpu-rx-5700--gfx1010) has the exact setup.
 
 ## Quick start
 
@@ -94,6 +117,19 @@ python scripts/sweep.py --config configs/toy_platformer_curriculum_stage1.yaml \
 Each grid point and seed becomes a normal run directory, and finished runs are skipped on restart. The results go to
 `results.csv` and to `summary.md`, a mean ± std table ranked by best eval return.
 
+**Train a readout by imitation (0.3):**
+
+```bash
+python scripts/constant_baselines.py configs/imitation/gaps.yaml          # the floor to beat
+python scripts/train_imitation.py --config configs/imitation/gaps.yaml --mode reservoir --target q --q-clip 5 \
+    --critical-weight 4 --iters 4 --levels 20 --workers 2 \
+    --set reservoir.input_structure=local --set reservoir.leak_rate_min=0.05 --set reservoir.leak_rate_max=1.0 \
+    --out runs/imitation/gaps_res
+python scripts/eval_readout.py runs/imitation/gaps_res --levels 40
+python scripts/record_teacher.py --config configs/imitation/full.yaml --levels 40 --out runs/teacher/full.npz
+python scripts/offline_readouts.py --config configs/imitation/full.yaml --data runs/teacher/full.npz --out runs/teacher/offline.json
+```
+
 ## Models
 
 | config | `reservoir.type` | `agent.model` | trained parameters |
@@ -137,17 +173,21 @@ The results are numerically identical to the dense formula.
 
 ```text
 configs/                 training configs (incl. curriculum stages and the GRU baseline)
+configs/imitation/       difficulty ladder for imitation (gaps, enemies, full, screen-only)
 src/echomario/envs/      toy platformer, Gymnasium registration, optional Super Mario Bros wrapper
 src/echomario/reservoirs sparse echo state network
 src/echomario/agents/    readout, CNN and GRU actor-critics
 src/echomario/training/  PPO, rollouts, evaluation, subprocess env pool
-scripts/                 train, sweep, play, evaluate, record, compare
+src/echomario/experts/   look-ahead planner teacher
+src/echomario/imitation.py, teacher_data.py   ridge/DAgger readouts, recorded teacher datasets
+scripts/                 train, sweep, play, evaluate, record, compare, imitation, baselines
 tests/                   automated tests
 docs/                    architecture, visualization and asset policy
 ```
 
 ## Documentation
 
+- [Imitation readouts and 0.3 findings](docs/imitation.md)
 - [Architecture](docs/architecture.md)
 - [Visualization](docs/visualization.md)
 - [Legal / Asset Policy](docs/legal.md)

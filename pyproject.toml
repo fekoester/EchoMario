@@ -1,6 +1,6 @@
 [project]
 name = "echomario"
-version = "0.2.0"
+version = "0.3.0"
 description = "Frozen reservoirs vs. trained recurrent networks for PPO control in a procedurally generated platformer."
 readme = "README.md"
 requires-python = ">=3.10"

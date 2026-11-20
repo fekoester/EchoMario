@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import bisect
+import math
 from dataclasses import dataclass
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+
+
+def _clip(value: float, low: float, high: float) -> float:
+    """float(np.clip(value, low, high)) for scalars, without numpy's per-call overhead."""
+    return float(min(max(float(value), low), high))
 
 
 @dataclass
@@ -34,6 +41,7 @@ class Enemy:
     vx: float
     left: float
     right: float
+    uid: int = -1  # stable id (index at spawn), survives get/set_sim_state copies
 
 
 @dataclass
@@ -296,6 +304,10 @@ class ToyPlatformerEnv(gym.Env):
         self.max_x = 0.0
         self.goal_x = self.width - 5
         self.solid_tiles: set[tuple[int, int]] = set()
+        # Column index of solid_tiles (x -> set of y): collision checks only look at a few columns.
+        self._solid_by_col: dict[int, set[int]] = {}
+        # Planners turn this off while simulating ahead to skip building observations.
+        self.compute_obs = True
         self.platforms: list[Platform] = []
         self.gaps: list[tuple[int, int]] = []
         self.bridge_platforms: list[Platform] = []
@@ -334,6 +346,7 @@ class ToyPlatformerEnv(gym.Env):
 
     def _generate_level(self) -> None:
         self.solid_tiles.clear()
+        self._solid_by_col = {}
         self.platforms = []
         self.gaps = []
         self.bridge_platforms = []
@@ -352,6 +365,14 @@ class ToyPlatformerEnv(gym.Env):
 
         self._apply_forced_gaps()
         self._rebuild_static_screen_grid()
+        self._index_coins()
+
+    def _index_coins(self) -> None:
+        """Coins never move: keep them sorted by x so collection only checks nearby ones."""
+        order = sorted(range(len(self.coins)), key=lambda i: self.coins[i].x)
+        self._coin_order = order
+        self._coin_xs = [self.coins[i].x for i in order]
+        self._coins_left = sum(0 if coin.collected else 1 for coin in self.coins)
 
     def _parse_forced_gaps(self, forced_gaps: list | None) -> list[tuple[int, int]]:
         parsed: list[tuple[int, int]] = []
@@ -568,30 +589,34 @@ class ToyPlatformerEnv(gym.Env):
             vx=float(self.enemy_speed if self.rng.random() < 0.5 else -self.enemy_speed),
             left=float(left),
             right=float(right),
+            uid=len(self.enemies),
         )
         self.enemies.append(enemy)
 
     def _add_solid_tile(self, x: int, y: int) -> None:
         if 0 <= x < self.width and 0 <= y < self.height:
             self.solid_tiles.add((int(x), int(y)))
+            self._solid_by_col.setdefault(int(x), set()).add(int(y))
 
     def _remove_solid_tile(self, x: int, y: int) -> None:
         self.solid_tiles.discard((int(x), int(y)))
+        col = self._solid_by_col.get(int(x))
+        if col is not None:
+            col.discard(int(y))
 
     def _is_solid_tile(self, x: int, y: int) -> bool:
-        return (int(x), int(y)) in self.solid_tiles
+        col = self._solid_by_col.get(int(x))
+        return col is not None and int(y) in col
 
     def _highest_surface_y_at_column(self, x: int) -> int | None:
-        ys = [y for sx, y in self.solid_tiles if sx == int(x)]
+        ys = self._solid_by_col.get(int(x))
         return max(ys) if ys else None
 
     def _surface_top_below(self, x: float, y_limit: float) -> float | None:
-        sampled_x = {int(round(x)), int(np.floor(x - 0.25)), int(np.ceil(x + 0.25))}
+        sampled_x = {int(round(x)), math.floor(x - 0.25), math.ceil(x + 0.25)}
         candidates: list[float] = []
         for xi in sampled_x:
-            for sx, sy in self.solid_tiles:
-                if sx != xi:
-                    continue
+            for sy in self._solid_by_col.get(xi, ()):
                 top = float(sy + 1)
                 if top <= y_limit + 1e-6:
                     candidates.append(top)
@@ -600,32 +625,31 @@ class ToyPlatformerEnv(gym.Env):
         return max(candidates)
 
     def _resolve_horizontal(self, old_x: float, old_y: float, new_x: float) -> float:
-        direction = np.sign(new_x - old_x)
+        delta = new_x - old_x
+        direction = 1.0 if delta > 0.0 else (-1.0 if delta < 0.0 else 0.0)
         if direction == 0.0:
-            return float(np.clip(new_x, 0.0, self.width - 1.0))
+            return _clip(new_x, 0.0, self.width - 1.0)
 
         # `player.y` is the feet position on the top surface of a tile.
         # Sample slightly above the feet; sampling below would treat the floor
         # itself as a horizontal blocker and freeze ground movement.
         edge_x = new_x + 0.35 * direction
         sample_ys = [old_y + 0.05, old_y + 0.45, old_y + 0.85]
-        xi = int(np.floor(edge_x))
+        xi = math.floor(edge_x)
         for y in sample_ys:
-            yi = int(np.floor(y))
+            yi = math.floor(y)
             if self._is_solid_tile(xi, yi):
                 return old_x
-        return float(np.clip(new_x, 0.0, self.width - 1.0))
+        return _clip(new_x, 0.0, self.width - 1.0)
 
     def _check_head_collision(self, old_x: float, old_y: float, new_y: float) -> tuple[float, bool]:
         head_old = old_y + 0.9
         head_new = new_y + 0.9
-        sampled_x = {int(round(old_x)), int(np.floor(old_x - 0.25)), int(np.ceil(old_x + 0.25))}
+        sampled_x = {int(round(old_x)), math.floor(old_x - 0.25), math.ceil(old_x + 0.25)}
         ceiling_hit = False
         candidate_bottoms: list[float] = []
         for xi in sampled_x:
-            for sx, sy in self.solid_tiles:
-                if sx != xi:
-                    continue
+            for sy in self._solid_by_col.get(xi, ()):
                 bottom = float(sy)
                 if head_old < bottom <= head_new + 1e-6:
                     candidate_bottoms.append(bottom)
@@ -661,12 +685,10 @@ class ToyPlatformerEnv(gym.Env):
             )
 
     def _check_landing(self, old_x: float, old_y: float, new_x: float, new_y: float) -> tuple[float, bool]:
-        sampled_x = {int(round(new_x)), int(np.floor(new_x - 0.25)), int(np.ceil(new_x + 0.25))}
+        sampled_x = {int(round(new_x)), math.floor(new_x - 0.25), math.ceil(new_x + 0.25)}
         landing_surfaces: list[float] = []
         for xi in sampled_x:
-            for sx, sy in self.solid_tiles:
-                if sx != xi:
-                    continue
+            for sy in self._solid_by_col.get(xi, ()):
                 top = float(sy + 1)
                 if new_y <= top <= old_y + 1e-6:
                     landing_surfaces.append(top)
@@ -694,7 +716,7 @@ class ToyPlatformerEnv(gym.Env):
                 continue
             item.vy -= 0.02
             old_y = item.y
-            item.x = float(np.clip(item.x + item.vx, 0.0, self.width - 1.0))
+            item.x = _clip(item.x + item.vx, 0.0, self.width - 1.0)
             item.y += item.vy
             landing_y, landed = self._check_landing(item.x, old_y, item.x, item.y)
             if landed:
@@ -706,10 +728,15 @@ class ToyPlatformerEnv(gym.Env):
     def _collect_objects(self) -> tuple[int, int]:
         coin_hits = 0
         item_hits = 0
-        for coin in self.coins:
+        px = self.player.x
+        lo = bisect.bisect_left(self._coin_xs, px - 0.75)
+        hi = bisect.bisect_right(self._coin_xs, px + 0.75)
+        for k in range(lo, hi):
+            coin = self.coins[self._coin_order[k]]
             if not coin.collected and abs(self.player.x - coin.x) <= 0.7 and abs(self.player.y - coin.y) <= 1.0:
                 coin.collected = True
                 coin_hits += 1
+        self._coins_left -= coin_hits
         for item in self.items:
             if not item.collected and abs(self.player.x - item.x) <= 0.8 and abs(self.player.y - item.y) <= 1.0:
                 item.collected = True
@@ -742,13 +769,18 @@ class ToyPlatformerEnv(gym.Env):
         return False
 
     def _enemy_pass_count(self, old_x: float, new_x: float) -> int:
+        """
+        Enemies the player got past this step: the player's x crossed ``enemy.x + 0.5`` moving right.
+        (Before 0.3 the test was ``old_x <= enemy.x < new_x - 0.5``, which needs a step longer than
+        0.5 tiles; the top speed is 0.33 tiles per step, so it never fired and
+        ``enemy_pass_reward`` was never paid.)
+        """
         count = 0
         for enemy in self.enemies:
-            enemy_id = id(enemy)
-            if enemy_id in self.passed_enemy_ids:
+            if enemy.uid in self.passed_enemy_ids:
                 continue
-            if old_x <= enemy.x < new_x - 0.5:
-                self.passed_enemy_ids.add(enemy_id)
+            if old_x < enemy.x + 0.5 <= new_x:
+                self.passed_enemy_ids.add(enemy.uid)
                 count += 1
         return count
 
@@ -780,9 +812,9 @@ class ToyPlatformerEnv(gym.Env):
         if action.shape[0] != 3:
             raise ValueError(f'Expected continuous action with shape (3,), got {action.shape}')
 
-        move_axis = float(np.clip(action[0], -1.0, 1.0))
-        jump_signal = float(np.clip(action[1], -1.0, 1.0))
-        run_signal = float(np.clip(action[2], -1.0, 1.0))
+        move_axis = _clip(action[0], -1.0, 1.0)
+        jump_signal = _clip(action[1], -1.0, 1.0)
+        run_signal = _clip(action[2], -1.0, 1.0)
 
         jump_pressed = jump_signal > 0.0
         run_pressed = run_signal > 0.0
@@ -801,7 +833,7 @@ class ToyPlatformerEnv(gym.Env):
 
         accel = move_axis * (base_accel + run_accel * run_strength)
         p.vx = friction * p.vx + accel
-        p.vx = float(np.clip(p.vx, -max_speed, max_speed))
+        p.vx = _clip(p.vx, -max_speed, max_speed)
 
         if jump_pressed:
             p.jump_hold_frames += 1
@@ -910,7 +942,7 @@ class ToyPlatformerEnv(gym.Env):
         }
         reward = sum(reward_components.values())
         if stomped_enemy:
-            self.passed_enemy_ids.add(id(enemy))
+            self.passed_enemy_ids.add(enemy.uid)
         if reached_goal:
             p.score += 1000
 
@@ -946,10 +978,50 @@ class ToyPlatformerEnv(gym.Env):
             'gaps': self.gaps,
             'num_platforms': len(self.platforms),
             'num_enemies': len(self.enemies),
-            'num_coins': sum(0 if coin.collected else 1 for coin in self.coins),
+            'num_coins': self._coins_left,
         }
 
-        return self._obs(), float(reward), terminated, truncated, info
+        return (self._obs() if self.compute_obs else None), float(reward), terminated, truncated, info
+
+    # ----- planning support: snapshot / restore of the dynamic state (the level layout is static) -----
+
+    def get_sim_state(self) -> tuple:
+        """Returns a compact copy of everything ``step`` mutates, for look-ahead planners."""
+        p = self.player
+        return (
+            Player(p.x, p.y, p.vx, p.vy, p.on_ground, p.jump_hold_frames, p.collected_coins, p.collected_items, p.score),
+            self.t,
+            self.max_x,
+            self.stagnation_counter,
+            frozenset(self.cleared_gap_indices),
+            frozenset(self.passed_enemy_ids),
+            self.next_checkpoint_x,
+            [Enemy(e.x, e.y, e.vx, e.left, e.right, e.uid) for e in self.enemies],
+            tuple(c.collected for c in self.coins),
+            tuple(b.used for b in self.question_blocks),
+            [Item(i.x, i.y, i.kind, i.vx, i.vy, i.collected, i.emerging_frames) for i in self.items],
+            self.rng.bit_generator.state,
+        )
+
+    def set_sim_state(self, state: tuple) -> None:
+        """Restores a state from :meth:`get_sim_state` (objects are copied, the snapshot stays reusable)."""
+        (player, t, max_x, stagnation, cleared, passed, next_cp, enemies, coins, blocks, items, rng_state) = state
+        p = player
+        self.player = Player(p.x, p.y, p.vx, p.vy, p.on_ground, p.jump_hold_frames, p.collected_coins, p.collected_items, p.score)
+        self.t = t
+        self.max_x = max_x
+        self.stagnation_counter = stagnation
+        self.cleared_gap_indices = set(cleared)
+        self.passed_enemy_ids = set(passed)
+        self.next_checkpoint_x = next_cp
+        self.enemies = [Enemy(e.x, e.y, e.vx, e.left, e.right, e.uid) for e in enemies]
+        for coin, collected in zip(self.coins, coins):
+            coin.collected = collected
+        self._coins_left = sum(0 if c else 1 for c in coins)
+        for block, used in zip(self.question_blocks, blocks):
+            block.used = used
+        self.items = [Item(i.x, i.y, i.kind, i.vx, i.vy, i.collected, i.emerging_frames) for i in items]
+        self.rng.bit_generator.state = rng_state
 
     def _nearest_enemy_features(self) -> tuple[float, float, float]:
         nearest_dx = 12.0
