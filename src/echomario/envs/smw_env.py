@@ -330,6 +330,7 @@ class SMWEnv(gym.Env):
             sy = int(w[0xD8 + i]) | (int(w[0x14D4 + i]) << 8)
             sx, sy = sx - 0x10000 if sx >= 0x8000 else sx, sy - 0x10000 if sy >= 0x8000 else sy
             k = int(w[0x1662 + i]) & 0x3F
+            k = k if k < len(clip['dx']) else 0  # indices 60-63 (a few bosses) lie outside the ROM table
             dx, dy, wd, _ht = ((int(clip['dx'][k]), int(clip['dy'][k]), int(clip['w'][k]), int(clip['h'][k])) if k
                                else PLATFORM_DEFAULT_BOX)
             if sx + dx - 16 <= m['x'] + 8 <= sx + dx + wd + 16 and sy + dy >= m['y']:
@@ -385,6 +386,7 @@ class SMWEnv(gym.Env):
             sx = s16(int(w[0xE4 + i]) | (int(w[0x14E0 + i]) << 8))
             sy = s16(int(w[0xD8 + i]) | (int(w[0x14D4 + i]) << 8))
             k = int(w[0x1662 + i]) & 0x3F
+            k = k if k < len(clip['dx']) else 0  # indices 60-63 (a few bosses) lie outside the ROM table
             dx, dy, wd, ht = int(clip['dx'][k]), int(clip['dy'][k]), int(clip['w'][k]), int(clip['h'][k])
             if num in PLATFORM_SPRITES:
                 ch = 9
