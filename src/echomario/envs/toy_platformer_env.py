@@ -292,9 +292,11 @@ class ToyPlatformerEnv(gym.Env):
         self.state_dim = len(self.STATE_FEATURE_NAMES) if self.include_state_features else 0
         self.screen_channel_index = {name: idx for idx, name in enumerate(self.SCREEN_CHANNEL_NAMES)}
         self.input_feature_names = self._build_input_feature_names()
+        # distances are in units of 12 tiles; the next gap can be up to a level width ahead
+        bound = max(10.0, self.width / 12.0 + 2.0)
         self.observation_space = spaces.Box(
-            low=-10.0,
-            high=10.0,
+            low=-bound,
+            high=bound,
             shape=(len(self.input_feature_names),),
             dtype=np.float32,
         )
