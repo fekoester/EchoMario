@@ -1,0 +1,53 @@
+diff --git a/cores/snes/libretro/libretro.cpp b/cores/snes/libretro/libretro.cpp
+index f66920f4..2b9b5f0a 100644
+--- a/cores/snes/libretro/libretro.cpp
++++ b/cores/snes/libretro/libretro.cpp
+@@ -275,11 +275,29 @@ static void update_variables(void)
+      update_geometry();
+ }
+ 
++// EchoMario patch: let the frontend skip drawing and audio mixing for frames nobody looks at
++// (look-ahead rollouts). Game logic, RAM and save-states are unaffected.
++static int echomario_render = 1;
++static int echomario_audio = 1;
++extern "C" __attribute__((visibility("default"))) void echomario_set_av(int render, int audio)
++{
++   echomario_render = render;
++   echomario_audio = audio;
++   if (render)
++      IPPU.RenderThisFrame = TRUE;  // snes9x only re-enables drawing on reset / state load otherwise
++}
++
+ static void S9xAudioCallback(void*)
+ {
+    // Just pick a big buffer. We won't use it all.
+    static int16_t audio_buf[0x20000];
+ 
++   if (!echomario_audio)
++   {
++      S9xFinalizeSamples();
++      S9xClearSamples();
++      return;
++   }
+    S9xFinalizeSamples();
+    size_t avail = S9xGetSampleCount();
+    S9xMixSamples((uint8*)audio_buf, avail);
+@@ -1173,7 +1191,7 @@ bool S9xPollButton(unsigned int, bool*) { return false; }
+ void S9xToggleSoundChannel(int) {}
+ const char* S9xGetFilenameInc(const char* in, s9x_getdirtype) { return ""; }
+ const char* S9xBasename(const char* in) { return in; }
+-bool8 S9xInitUpdate() { return TRUE; }
++bool8 S9xInitUpdate() { return echomario_render ? TRUE : FALSE; }
+ void S9xExtraUsage() {}
+ bool8 S9xOpenSoundDevice() { return TRUE; }
+ bool S9xPollAxis(unsigned int, short*) { return FALSE; }
+diff --git a/cores/snes/libretro/link.T b/cores/snes/libretro/link.T
+index 9e82b5dd..3ed99970 100644
+--- a/cores/snes/libretro/link.T
++++ b/cores/snes/libretro/link.T
+@@ -1,4 +1,4 @@
+ {
+-   global: retro_*;
++   global: retro_*; echomario_set_av;
+    local: *;
+ };
