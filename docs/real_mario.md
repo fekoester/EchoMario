@@ -137,6 +137,70 @@ Per training level in the best round: Yoshi's Island 1 0.43, Yoshi's Island 2 fi
 That is now clearly above bunny-hopping (0.35) on the training levels. Held-out levels do not move:
 the student learns these levels, not yet the game.
 
+## Version 2: corrected input, better teacher, a cleaner test
+
+The results above use observation v1 and teacher v1. Checking them turned up enough problems that the setup
+was rebuilt (`--obs v2 --teacher v2`); v1 stays available so the runs above reproduce.
+
+**Observation v2** (`SMWEnv(obs='v2')`, 22 × 28 window, 9259 inputs):
+- Tiles are classed by their *measured* behaviour. `scripts/smw_tile_probe.py` wrote each of the 512 Map16
+  tiles into a running level next to Mario and read the game's own flags (`src/echomario/envs/smw_tiles.py`).
+  The v1 rule (0x111 and up = solid) was wrong for 2689 cells of the 24 levels: 1070 passable cells shown as
+  walls, 774 water cells missing, 637 lava/muncher cells shown as ground, 128 slopes shown as walls, 76 coins.
+- Water on an interactive layer 2 (Yoshi's Island 4) and level-wide water (Forest 2) are read too: the water
+  channel matches the game's in-water flag in 99.6 % (YI4) and 98.2 % (VD2) of frames.
+- 15 channels: solid, ledge, slope, water, climbable, deadly (incl. the void below the level), coin, stompable
+  enemy, harmful enemy (incl. cluster sprites such as Boo rings), platform sprite, item (incl. carryable
+  sprites), projectile, goal tape, sprite x / y speed. Sprites cover their hitbox from the ROM's clipping table.
+- 19 numbers of Mario's state (speed, on ground, position inside his tile, power-up, swimming, climbing,
+  ducking, spin jump, carrying, star, invulnerable, Yoshi, facing, P-meter, standing on a sprite).
+
+**Teacher v2**: v1's 1-second scores plus a 3-second safety check that vetoes an action when every 3-second
+plan from it dies. Ranking actions by 3-second scores directly made the teacher procrastinate. Its pit check
+looks straight down to the level bottom (`SMWEnv.ground_below`); v1 looked into the student's observation
+window, so the teacher's decisions depended on the window size. A patience rule stops it from waiting forever.
+Alone on 7 levels it finishes 5 (v1: 4).
+
+**Speed**: `scripts/build_snes_core.sh` builds stable-retro's snes9x with a switch to skip drawing; rollouts
+are 1.55× faster with identical RAM, and macros share their common prefixes: 1.65× per teacher decision.
+
+**Replay logs**: `--save-data` stores every labelled episode as actions plus rewinds; any observation
+encoding is rebuilt from them without the teacher (`replay_observations`, verified bit-exact).
+
+**A/B/C split** (`--split-file`, `runs/smw/make_split.py`): all 24 levels, sorted by bunny-hop progress and
+dealt into three equally hard groups. A (9 levels) trained in full; B (7) first half trained, second half tested
+from a mid-level state the teacher reached (`scripts/smw_midpoints.py`); C (8) never seen.
+
+### Results (6 DAgger rounds, 20 k labels, 3 start delays per level)
+
+| | best round | final round | bunny-hop |
+|---|---:|---:|---:|
+| A: full levels, trained | 0.29 ± 0.06 | 0.22 ± 0.05 | 0.22 |
+| B: first halves, trained | 0.20 ± 0.03 | 0.18 ± 0.04 | 0.17 |
+| B: second halves, not trained | 0.20 ± 0.02 | 0.21 ± 0.04 | 0.20 |
+| C: unseen levels | 0.09 ± 0.01 | 0.08 ± 0.01 | 0.13 |
+
+The student is at best a little above bunny-hopping on what it was trained on, at the bunny-hop level on the
+untrained second halves, and below it on unseen levels: it learns these levels, not the game.
+
+**Which reservoir generalizes?** `scripts/smw_cv_lab.py` fits readouts on 3 of 4 folds of levels and scores the
+held-out levels against the teacher's labels (quality of the chosen action on the 0..1 target scale).
+
+| features | held-out | fitted levels |
+|---|---:|---:|
+| constant action (bias only) | 0.823 | 0.823 |
+| reservoir 500 / 1000 / 3000 / 6000 | 0.839–0.840 | 0.843–0.851 |
+| reservoir + raw input | 0.839 | 0.855 |
+| raw input, no reservoir | 0.836 | 0.871 |
+
+Every configuration gains under 0.02 over a constant action on held-out levels, and the best regularization is
+very strong. Size, seeds and raw input change nothing there. More capacity fits the training levels better
+without carrying over, so the limit is 16 training levels for a linear readout, not the reservoir.
+
+**The reservoir as a critic**: a second readout fitted to the teacher's raw scores per action explains 44 % of
+their variance (state value: 50 %); the raw input explains 60 % (67 %). With the rich v2 input the random
+3000-neuron projection loses information. Memory settings barely matter.
+
 ## Videos
 
 ```bash

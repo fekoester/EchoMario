@@ -210,11 +210,14 @@ class RidgeAccumulator:
         labels: np.ndarray,
         targets: np.ndarray | None = None,
         critical_weight: float = 0.0,
+        tried: np.ndarray | None = None,
     ) -> None:
         """
         Adds samples. With ``critical_weight`` k > 0 each sample is weighted by
         1 + k * (max target - min target): frames where some action is fatal (a jump must happen
-        now) count more than the many frames where every action is fine.
+        now) count more than the many frames where every action is fine. ``tried`` (bool, same shape
+        as targets) limits that spread to the actions the teacher actually evaluated; without it an
+        action the teacher never tries (target 0 everywhere) makes every frame look critical.
         """
         f = feats.astype(np.float64)
         if targets is None:
@@ -223,7 +226,12 @@ class RidgeAccumulator:
         else:
             y = np.asarray(targets, dtype=np.float64)
         if critical_weight > 0.0 and targets is not None:
-            w = 1.0 + critical_weight * (y.max(axis=1) - y.min(axis=1))
+            if tried is not None:
+                yt = np.where(tried, y, np.nan)
+                spread = np.nan_to_num(np.nanmax(yt, axis=1) - np.nanmin(yt, axis=1))
+            else:
+                spread = y.max(axis=1) - y.min(axis=1)
+            w = 1.0 + critical_weight * spread
             fw = f * w[:, None]
             self.gram += fw.T @ f
             self.cross += fw.T @ y

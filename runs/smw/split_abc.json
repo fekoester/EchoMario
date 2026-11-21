@@ -1,0 +1,32 @@
+{
+ "full": [
+  "YoshiIsland2",
+  "YoshiIsland4",
+  "Forest4",
+  "DonutPlains5",
+  "Forest3",
+  "DonutPlains4",
+  "Forest2",
+  "VanillaDome1",
+  "Bridges2"
+ ],
+ "half": [
+  "DonutPlains3",
+  "DonutPlains1",
+  "DonutPlains2",
+  "ChocolateIsland3",
+  "ChocolateIsland2",
+  "ChocolateIsland1",
+  "Forest1"
+ ],
+ "unseen": [
+  "YoshiIsland1",
+  "Forest5",
+  "VanillaDome3",
+  "VanillaDome2",
+  "VanillaDome5",
+  "YoshiIsland3",
+  "Bridges1",
+  "VanillaDome4"
+ ]
+}

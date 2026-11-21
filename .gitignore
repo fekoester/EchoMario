@@ -24,7 +24,11 @@ htmlcov/
 .vscode/
 
 # Experiment artifacts
-runs/
+/runs/*
+!/runs/smw/
+/runs/smw/*
+!/runs/smw/*.py
+!/runs/smw/*.json
 outputs/
 # game ROMs are never committed
 *.sfc
