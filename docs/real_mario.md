@@ -197,6 +197,49 @@ Every configuration gains under 0.02 over a constant action on held-out levels, 
 very strong. Size, seeds and raw input change nothing there. More capacity fits the training levels better
 without carrying over, so the limit is 16 training levels for a linear readout, not the reservoir.
 
+## Version 3: more levels, honest labels, teacher v3 (2026-11-22)
+
+**More levels.** `scripts/smw_level_catalog.py` loads every level number through the RAM override
+(`$0109` + game mode `0x0F`) and keeps the distinct layouts: 40 new playable levels (`L01` … `LFF`, states in
+`~/.cache/echomario/levelstates`, not in git). `SMWEnv` also builds variants (`Level#m<seed>`: pits, block walls
+and extra enemies cut into flat ground).
+
+**The teacher's "deadly" labels were half wrong.** `scripts/smw_label_check.py` / `smw_relabel_deadly.py`
+retry every deadly (moment, button) with 100 random sticky button sequences for 3 s: 45 % of v2's 15,818 deadly
+labels are survivable. The fixed macros missed the escape, so "deadly" partly meant "this level confused the
+search". With corrected labels, predicting danger on unseen levels improves (AUC: local features 0.60 → 0.72,
+reservoir ridge 0.53 → 0.61, MLP 0.61 → 0.69; within levels 0.72–0.83 → 0.84–0.90).
+
+**Teacher v3** (`teacher_config('v3')`): v2 plus (1) the random rescue search for every action scored deadly
+(it corrects the scores only; the teacher acts on rescued actions only when nothing else survives), and
+(2) plan follow-through: after 3 decisions without progress it keeps executing its last plan, which stops v2's
+endless idling ("wait, then back up" always outscored "back up now"). On 93 levels both played: mean progress
+0.56 → 0.62. Data: `runs/smw/v3_all`, 64 levels + 48 variants, 24 k moments (`scripts/smw_collect.py`).
+
+**Offline transfer appears** (`scripts/smw_scaling.py`, 4 folds of 16 held-out levels, variants with their
+level; q = teacher rating of the chosen button):
+
+| training levels | constant button | reservoir ridge | gain |
+|---:|---:|---:|---:|
+| 1 | 0.765 | 0.737 | −0.028 |
+| 4 | 0.744 | 0.790 | +0.045 |
+| 16 | 0.757 | 0.814 | +0.057 |
+| 48 | 0.759 | 0.831 | +0.072 |
+
+Positive in every fold at 48 levels (v2 data, 12 levels: +0.014). The MLP overfits (final +0.008).
+
+**…but not in play** (`scripts/smw_closed_loop.py`: the 48-level ridge student plays the 16 held-out levels
+alone, 2 start delays):
+
+| policy | mean progress | died |
+|---|---:|---:|
+| ridge student | 0.172 | 72 % |
+| constant button (4-step cadence) | 0.185 | 70 % |
+| bunny-hop | 0.239 | 87 % |
+
+Behavioural cloning on the teacher's states does not carry over to the student's own states: one wrong
+decision puts it where no label exists. The next step is DAgger with teacher v3 on many levels.
+
 **The reservoir as a critic**: a second readout fitted to the teacher's raw scores per action explains 44 % of
 their variance (state value: 50 %); the raw input explains 60 % (67 %). With the rich v2 input the random
 3000-neuron projection loses information. Memory settings barely matter.
