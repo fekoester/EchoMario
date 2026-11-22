@@ -71,6 +71,13 @@ def job(level: str, config: dict, mode: str, weights: np.ndarray | None, **kw) -
             'teacher': 'v1', 'noop': 0, **kw}
 
 
+def student_values(f: np.ndarray, weights) -> np.ndarray:
+    """The student's action values: a linear readout (array) or a small MLP (dict W1, b1, W2, b2, numpy)."""
+    if isinstance(weights, dict):
+        return np.maximum(f @ weights['W1'] + weights['b1'], 0.0) @ weights['W2'] + weights['b2']
+    return f @ weights
+
+
 def play(j: dict) -> dict:
     """One episode (see job()). beta: probability that the teacher's action is executed at a decision;
     label: the teacher labels the visited states; rescue: rewinds after a student death in labelled runs;
@@ -103,7 +110,7 @@ def play(j: dict) -> dict:
         f = fm.step(obs)
         if step % plan_every == 0:
             # the student decides at the teacher's cadence and holds its choice, like the teacher
-            student_a = int(np.argmax(f @ weights)) if weights is not None else 0
+            student_a = int(np.argmax(student_values(f, weights))) if weights is not None else 0
             expert = None
             if planner is not None and label:
                 scores = planner.scores(env)
