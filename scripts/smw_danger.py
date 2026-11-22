@@ -34,8 +34,11 @@ def auc(score: np.ndarray, label: np.ndarray) -> float:
     return float((ranks[:len(pos)].sum() - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg)))
 
 
+DEADLY_DIR = __import__('os').environ.get('DEADLY_DIR', '')  # corrected deadly labels, if set
+
+
 def main() -> None:
-    dev = 'cuda'
+    dev = __import__('os').environ.get('DEVICE', 'cuda')
     data = Path('runs/smw/abc_v2/data')
     cfg = json.loads((data.parent / 'results.json').read_text())['config']
     eps = load_episodes(data)
@@ -46,6 +49,8 @@ def main() -> None:
     Y = np.stack([make_targets(s, int(a), 'q', 32.0) for s, a in zip(S, labels)])
     tried = np.isfinite(S)  # untried actions are stored as -inf
     D = np.where(tried, S, 0.0) <= -1000  # deadly among tried actions (training target)
+    if DEADLY_DIR:  # corrected labels (smw_relabel_deadly.py): survivable buttons are not deadly
+        D = np.concatenate([np.load(Path(DEADLY_DIR) / f"{e['file']}.npy") for e in eps])
     D_eval = np.nan_to_num(S, neginf=-1e9) <= -1000  # as in the other labs: an untried choice counts as deadly
     F = np.load(data.parent / 'feats_reservoir_baseline.npy').astype(np.float64)
     levels = np.concatenate([np.full(len(e['labels']), str(e['level'])) for e in eps])

@@ -72,6 +72,9 @@ def logistic(Ftr, ytr, wtr, Fte, l2=1e-3, steps=300):
         return (B @ w + b).numpy()
 
 
+DEADLY_DIR = __import__('os').environ.get('DEADLY_DIR', '')  # corrected deadly labels, if set
+
+
 def main() -> None:
     data = Path('runs/smw/abc_v2/data')
     cfg = json.loads((data.parent / 'results.json').read_text())['config']
@@ -81,6 +84,8 @@ def main() -> None:
     S = np.concatenate([e['scores'] for e in eps]).astype(np.float64)
     tried = np.isfinite(S)
     D = np.where(tried, S, 0.0) <= -1000
+    if DEADLY_DIR:
+        D = np.concatenate([np.load(Path(DEADLY_DIR) / f"{e['file']}.npy") for e in eps])
     levels = np.concatenate([np.full(len(e['labels']), str(e['level'])) for e in eps])
     rounds = np.concatenate([np.full(len(e['labels']), e['iter']) for e in eps])
     uniq = sorted(set(levels.tolist()))
