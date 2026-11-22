@@ -55,7 +55,7 @@ def main() -> None:
     data = Path(args.data)
     cfg = json.loads((data.parent / 'results.json').read_text())['config']
     eps = load_episodes(data)
-    attach_streams(eps, cfg, data.parent / 'streams', 2)
+    attach_streams(eps, cfg, data.parent / 'streams', 6)
     X = sparse.vstack([e['stream'][e['sample_pos']] for e in eps]).tocsr().astype(np.float32)
     scores = np.concatenate([e['scores'] for e in eps]).astype(np.float64)
     labels = np.concatenate([e['labels'] for e in eps])
