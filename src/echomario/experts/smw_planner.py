@@ -8,6 +8,13 @@ progress, minus penalties for dying or losing a power-up, plus a bonus for the g
 With ``deep_stages`` > 0 (teacher v2) a 3-second safety check is added: actions keep their
 1-second score, but an action is vetoed when every 3-second continuation found from it dies
 (running into a pit or a hazard whose timing is wrong), so the next safe action wins, e.g. waiting.
+
+Teacher v3 adds a rescue search: about half of v2's "deadly" verdicts were wrong (a random search found a
+way to survive, runs/smw/label_check.json), because the few fixed macros miss many escapes. For every
+action still scored deadly, v3 plays up to ``rescue_rollouts`` random sticky sequences (segments of
+``rescue_seg`` steps of one random button) for ``rescue_horizon`` steps after the first hold. If one
+survives, the action's score becomes the best surviving rollout's progress at the 1-second mark (as for the
+other actions; minus the hurt penalty if it was hurt), so "deadly" means "no escape found by a much wider search".
 The check grows each action's best ``deep_beam[k]`` plans (the furthest one, then the furthest one
 standing on the ground) by another ``horizon`` steps of ``deep_continuations``, and keeps growing
 further plans while all of them die. Ranking actions by the 3-second scores directly was tried
@@ -89,6 +96,12 @@ class SMWPlannerConfig:
     # past a hazard (a jump that needs exact timing), only waiting survives and the teacher would wait forever:
     # after this many decisions without progress, the veto pauses until Mario moves forward again
     veto_patience: int = 20
+    # teacher v3: random sticky rescue rollouts for actions scored deadly (0 = off)
+    rescue_rollouts: int = 0
+    rescue_horizon: int = 90
+    rescue_seg: tuple[int, int] = (2, 12)
+    rescue_keep: int = 4  # stop after this many surviving rollouts (the score is the best of them)
+    rescue_seed: int = 0
 
 
 def teacher_config(name: str) -> SMWPlannerConfig:
@@ -100,6 +113,8 @@ def teacher_config(name: str) -> SMWPlannerConfig:
     if name == 'v2-collector':  # v2, but coins, stomped enemies and power-ups count too
         return SMWPlannerConfig(deep_stages=2, deep_beam=(2, 1), ground_check='column', coin_bonus=16.0,
                                 score_bonus=0.16, powerup_bonus=200.0)
+    if name == 'v3':  # v2 plus the rescue search for deadly actions
+        return SMWPlannerConfig(deep_stages=2, deep_beam=(2, 1), ground_check='column', rescue_rollouts=64)
     raise ValueError(f'unknown teacher {name!r}')
 
 
@@ -141,6 +156,9 @@ class SMWPlanner:
         self._best_x, self._stalled = -1, 0
         self._root_counts = (0, 0, 0)
         self._collect = bool(self.cfg.coin_bonus or self.cfg.score_bonus or self.cfg.powerup_bonus)
+        self._rng = np.random.default_rng(self.cfg.rescue_seed)
+        self.rescued = 0  # deadly verdicts overturned by the rescue search
+        self.rescue_tried = 0
 
     @staticmethod
     def _counts(env: SMWEnv) -> tuple[int, int, int]:
@@ -291,6 +309,7 @@ class SMWPlanner:
         out = np.full(len(ACTION_NAMES), -np.inf, np.float64)
         stages = self.cfg.deep_stages
         stage1: dict[int, list[_Leaf]] = {}
+        mids: dict[int, tuple] = {}
         for a in self.first:
             env.set_sim_state(root)
             s1, ended = self._run(env, [a] * self.cfg.first_hold, start_x)
@@ -298,6 +317,7 @@ class SMWPlanner:
                 out[a] = s1
                 continue
             mid = env.get_sim_state()
+            mids[a] = mid
             leaves = self._expand(env, mid, self.conts, start_x, start_y, final=stages == 0, keep_state=stages > 0)
             # the 1-second score (with the pit-doom check, exactly as without deep stages)
             out[a] = max(lf.score - (self.cfg.death_penalty if lf.doomed and not lf.ended else 0.0) for lf in leaves)
@@ -308,9 +328,48 @@ class SMWPlanner:
             self._stalled += 1
         if stages and self._stalled < self.cfg.veto_patience:
             out = self._safety_check(env, out, stage1, start_x, start_y)
+        if self.cfg.rescue_rollouts:
+            for a, mid in mids.items():
+                if out[a] <= -self.cfg.death_penalty / 2:
+                    out[a] = self._rescue(env, mid, start_x, out[a])
         env.set_sim_state(root)
         env.set_render(rendering)
         return out
+
+    def _rescue(self, env: SMWEnv, mid: tuple, start_x: int, deadly_score: float) -> float:
+        """Random sticky rollouts from the state after the first hold; returns the best surviving score,
+        or ``deadly_score`` when none survives ``rescue_horizon`` steps."""
+        self.rescue_tried += 1
+        lo, hi = self.cfg.rescue_seg
+        best, found = -np.inf, 0
+        for _ in range(self.cfg.rescue_rollouts):
+            env.set_sim_state(mid)
+            t, dead, hurt, goal, v1 = 0, False, False, False, None
+            while t < self.cfg.rescue_horizon and not (dead or goal):
+                act, seg = int(self._rng.integers(0, len(ACTION_NAMES))), int(self._rng.integers(lo, hi + 1))
+                for _ in range(seg):
+                    env.emulate(act)
+                    _, _, terminated, _, info = env._after_step(compute_obs=False)
+                    self.rollout_steps += 1
+                    t += 1
+                    hurt |= bool(info['hurt'])
+                    if t == self.cfg.horizon:  # progress at the 1-second mark, comparable with the other scores
+                        v1 = self._value(env, start_x)
+                    if terminated:
+                        dead, goal = bool(info['died']), not info['died']
+                        break
+                    if t >= self.cfg.rescue_horizon:
+                        break
+            if dead:
+                continue
+            s = (self._value(env, start_x) if v1 is None or goal else v1) + (self.cfg.goal_bonus if goal else 0.0) - (self.cfg.hurt_penalty if hurt else 0.0)
+            best, found = max(best, s), found + 1
+            if found >= self.cfg.rescue_keep:
+                break
+        if not found:
+            return deadly_score
+        self.rescued += 1
+        return best
 
     def _safety_check(self, env: SMWEnv, s1: np.ndarray, stage1: dict[int, list[_Leaf]], start_x: int,
                       start_y: int) -> np.ndarray:
