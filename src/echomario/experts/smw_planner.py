@@ -14,7 +14,14 @@ way to survive, runs/smw/label_check.json), because the few fixed macros miss ma
 action still scored deadly, v3 plays up to ``rescue_rollouts`` random sticky sequences (segments of
 ``rescue_seg`` steps of one random button) for ``rescue_horizon`` steps after the first hold. If one
 survives, the action's score becomes the best surviving rollout's progress at the 1-second mark (as for the
-other actions; minus the hurt penalty if it was hurt), so "deadly" means "no escape found by a much wider search".
+other actions; minus the hurt penalty if it was hurt), so "deadly" means "no escape found by a much wider search". The rescue only corrects the scores (the
+labels): the teacher itself still acts on its own plans and picks a rescued action only when nothing else
+survives, because a lucky random escape is not one it can repeat at the next decision.
+v3 also follows through: replanning every decision let v2 procrastinate. "Idle, then back up for a run-up"
+(or "idle, then wait and hop") kept outscoring "start backing up now", so it idled until the stagnation
+limit (YoshiIsland3: 139 of 161 labels idle). After ``follow_after`` decisions without new progress, v3
+keeps executing the continuation of the plan it chose last, 4 steps per decision, as long as that button
+is not deadly and scores within ``follow_margin`` of the best.
 The check grows each action's best ``deep_beam[k]`` plans (the furthest one, then the furthest one
 standing on the ground) by another ``horizon`` steps of ``deep_continuations``, and keeps growing
 further plans while all of them die. Ranking actions by the 3-second scores directly was tried
@@ -102,6 +109,10 @@ class SMWPlannerConfig:
     rescue_seg: tuple[int, int] = (2, 12)
     rescue_keep: int = 4  # stop after this many surviving rollouts (the score is the best of them)
     rescue_seed: int = 0
+    # follow-through against procrastination (0 = off): after this many decisions without progress, keep
+    # executing the last chosen plan while its next button is safe and within follow_margin px of the best
+    follow_after: int = 0
+    follow_margin: float = 64.0
 
 
 def teacher_config(name: str) -> SMWPlannerConfig:
@@ -114,7 +125,8 @@ def teacher_config(name: str) -> SMWPlannerConfig:
         return SMWPlannerConfig(deep_stages=2, deep_beam=(2, 1), ground_check='column', coin_bonus=16.0,
                                 score_bonus=0.16, powerup_bonus=200.0)
     if name == 'v3':  # v2 plus the rescue search for deadly actions
-        return SMWPlannerConfig(deep_stages=2, deep_beam=(2, 1), ground_check='column', rescue_rollouts=64)
+        return SMWPlannerConfig(deep_stages=2, deep_beam=(2, 1), ground_check='column', rescue_rollouts=64,
+                                follow_after=3)
     raise ValueError(f'unknown teacher {name!r}')
 
 
@@ -159,6 +171,10 @@ class SMWPlanner:
         self._rng = np.random.default_rng(self.cfg.rescue_seed)
         self.rescued = 0  # deadly verdicts overturned by the rescue search
         self.rescue_tried = 0
+        self._rescued_now: set[int] = set()  # actions whose score came from the rescue search (last decision)
+        self._best_cont: dict[int, int] = {}  # first action -> index of its best continuation (last decision)
+        self._queue: list[int] = []  # rest of the plan being followed
+        self.followed = 0
 
     @staticmethod
     def _counts(env: SMWEnv) -> tuple[int, int, int]:
@@ -310,6 +326,8 @@ class SMWPlanner:
         stages = self.cfg.deep_stages
         stage1: dict[int, list[_Leaf]] = {}
         mids: dict[int, tuple] = {}
+        self._best_cont = {}
+        self._rescued_now = set()
         for a in self.first:
             env.set_sim_state(root)
             s1, ended = self._run(env, [a] * self.cfg.first_hold, start_x)
@@ -320,7 +338,9 @@ class SMWPlanner:
             mids[a] = mid
             leaves = self._expand(env, mid, self.conts, start_x, start_y, final=stages == 0, keep_state=stages > 0)
             # the 1-second score (with the pit-doom check, exactly as without deep stages)
-            out[a] = max(lf.score - (self.cfg.death_penalty if lf.doomed and not lf.ended else 0.0) for lf in leaves)
+            vals = [lf.score - (self.cfg.death_penalty if lf.doomed and not lf.ended else 0.0) for lf in leaves]
+            out[a] = max(vals)
+            self._best_cont[a] = int(np.argmax(vals))
             stage1[a] = leaves
         if start_x > self._best_x:
             self._best_x, self._stalled = start_x, 0
@@ -331,7 +351,10 @@ class SMWPlanner:
         if self.cfg.rescue_rollouts:
             for a, mid in mids.items():
                 if out[a] <= -self.cfg.death_penalty / 2:
-                    out[a] = self._rescue(env, mid, start_x, out[a])
+                    r = self._rescue(env, mid, start_x, out[a])
+                    if r > out[a]:
+                        self._rescued_now.add(a)
+                    out[a] = r
         env.set_sim_state(root)
         env.set_render(rendering)
         return out
@@ -426,9 +449,29 @@ class SMWPlanner:
         return out
 
     def choose(self, scores: np.ndarray) -> int:
+        if self._rescued_now:  # act on own plans; rescued actions only if nothing else survives
+            own = scores.copy()
+            own[list(self._rescued_now)] = -np.inf
+            if own.max() > -self.cfg.death_penalty / 2:
+                scores = own
         best = scores.max()
         cands = [a for a in range(len(scores)) if scores[a] >= best - max(1e-6, self.cfg.tie_tolerance)]
-        return min(cands, key=lambda a: self.rank.get(a, 99))
+        a = min(cands, key=lambda a_: self.rank.get(a_, 99))
+        if not self.cfg.follow_after:
+            return a
+        hold = self.cfg.first_hold
+        if self._queue and self._stalled >= self.cfg.follow_after:
+            chunk = self._queue[:hold]
+            counts = np.bincount(chunk, minlength=len(ACTION_NAMES))
+            nxt = int(max(range(len(counts)), key=lambda b: (counts[b], -chunk[::-1].index(b) if b in chunk else -99)))
+            if (np.isfinite(scores[nxt]) and scores[nxt] > -self.cfg.death_penalty / 2
+                    and scores[nxt] >= best - self.cfg.follow_margin):
+                self._queue = self._queue[hold:]
+                self.followed += 1
+                return nxt
+        k = self._best_cont.get(a)
+        self._queue = list(self.conts[k]) if k is not None else []
+        return a
 
     def act(self, env: SMWEnv) -> int:
         return self.choose(self.scores(env))
