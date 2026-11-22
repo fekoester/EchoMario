@@ -30,7 +30,7 @@ import torch
 from scipy import sparse
 
 from echomario.imitation import make_targets
-from smw_readout_lab import attach_streams, load_episodes
+from smw_readout_lab import attach_streams, load_episodes, replay_features
 
 
 def mlp(d: int, width: int) -> torch.nn.Module:
@@ -48,7 +48,7 @@ def main() -> None:
     p.add_argument('--subsets', type=int, default=3)
     p.add_argument('--out', default='runs/smw/scaling')
     args = p.parse_args()
-    dev = 'cuda'
+    dev = __import__('os').environ.get('DEVICE', 'cuda')
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -62,7 +62,11 @@ def main() -> None:
     y = np.stack([make_targets(s, int(a), 'q', 32.0) for s, a in zip(scores, labels)]).astype(np.float32)
     deadly = np.nan_to_num(scores, neginf=-1e9) <= -1000
     levels = np.concatenate([np.full(len(e['labels']), str(e['level'])) for e in eps])
-    F = np.load(data.parent / 'feats_reservoir_baseline.npy')
+    fpath = data.parent / 'feats_reservoir_baseline.npy'
+    if not fpath.exists():  # the 3000-neuron baseline reservoir of the config, plus a bias column
+        print('computing reservoir features ...', flush=True)
+        np.save(fpath, np.concatenate(replay_features(eps, cfg, 'reservoir')).astype(np.float32))
+    F = np.load(fpath)
     assert len(F) == len(y), (F.shape, y.shape)
     uniq = sorted(set(levels.tolist()))
     order = np.random.default_rng(0).permutation(len(uniq))
@@ -119,7 +123,7 @@ def main() -> None:
         test_lv = [lv for lv in uniq if fold_of[lv] == fold]
         pool = [lv for lv in uniq if fold_of[lv] != fold]
         te = np.nonzero(np.isin(levels, test_lv))[0]
-        ks = sorted({k for k in (1, 2, 4, 8, len(pool)) if k <= len(pool)})
+        ks = sorted({k for k in (1, 2, 4, 8, 16, 32, len(pool)) if k <= len(pool)})
         print(f'\nfold {fold}: test {test_lv} ({len(te)} moments), pool of {len(pool)} levels', flush=True)
         rng = np.random.default_rng(100 + fold)
         for k in ks:
