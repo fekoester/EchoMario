@@ -5,7 +5,9 @@ DAgger on many levels, tested closed loop on unseen levels.
 Starts from the teacher-only dataset (e.g. runs/smw/v3_all: replay logs + reservoir features), uses one level
 fold of smw_scaling.py / smw_closed_loop.py as the unseen test set, and repeats:
 
-  1. fit the ridge readout (alpha as in smw_closed_loop.py) on all labels so far,
+  1. fit the ridge readout on all labels so far, for each alpha of --alphas, and keep the alpha whose student
+     plays the training levels best (closed loop, start delay 0); the unseen levels are played with every
+     alpha for the record, but never used to choose,
   2. let the student play every training level (base levels and variants of the other folds) while the
      teacher labels every decision; the teacher steers only with probability beta and for a few seconds after
      a rewind (--rescues: after a student death, rewind 2 s and let the teacher drive past the danger),
@@ -45,7 +47,7 @@ def main() -> None:
     p.add_argument('--fold', type=int, default=0)
     p.add_argument('--out', default='runs/smw/dagger_v3_f0')
     p.add_argument('--iters', type=int, default=4, help='DAgger collection rounds after the offline student')
-    p.add_argument('--alpha', type=float, default=10.0)
+    p.add_argument('--alphas', default='0.001,0.01,0.1,1,10', help='ridge alphas (relative to the mean feature variance)')
     p.add_argument('--beta', default='0.3,0,0,0', help='teacher share per collection round')
     p.add_argument('--rescues', type=int, default=3)
     p.add_argument('--delay-max', type=int, default=40, help='collection episodes start after 0..N idle steps')
@@ -73,6 +75,7 @@ def main() -> None:
     specs = sorted({Path(f).stem.split('_', 1)[1] for f in map(str, data.glob('*.npz'))})
     train_specs = [s for s in specs if fold_of[s.split('#m')[0].split('@')[0]] != args.fold]
     starts = [int(s) for s in args.starts.split(',')]
+    alphas = [float(a) for a in args.alphas.split(',')]
     betas = [float(b) for b in args.beta.split(',')]
     print(f'fold {args.fold}: {train_mask.sum()} offline labels, {len(train_specs)} training episodes per round, '
           f'test {test}', flush=True)
@@ -111,24 +114,34 @@ def main() -> None:
             z = np.load(f)
             Fs.append(z['feats'])
             Ys.append(z['targets'])
-        if it in done_eval:
-            continue
         F, Y = np.concatenate(Fs), np.concatenate(Ys)
-        W = ridge(F, Y, args.alpha)
+        if it in done_eval:  # resumed: the student of this iteration is on disk
+            W = np.load(out / f'readout_iter{it}.npy')
+            continue
+        cands = []
+        for alpha in alphas:
+            Wa = ridge(F, Y, alpha)
+            et = pool.map(play, [job(s, cfg, 'reservoir', Wa, max_steps=args.max_steps, noop=0) for s in train_specs],
+                          chunksize=1)
+            ev = pool.map(play, [job(lv, cfg, 'reservoir', Wa, max_steps=args.max_steps, noop=n)
+                                 for lv in test for n in starts], chunksize=1)
+            qfit = float(Y[np.arange(len(Y)), (F @ Wa).argmax(1)].mean())
+            cands.append({'alpha': alpha, 'W': Wa, 'train': summarize(et), 'test': summarize(ev), 'ev': ev, 'fit_q': qfit})
+            print(f"  iter {it} alpha {alpha}: fit q {qfit:.3f} | train levels prog {cands[-1]['train']['progress']} "
+                  f"| unseen prog {cands[-1]['test']['progress']} (not used to choose)", flush=True)
+        best = max(cands, key=lambda c: c['train']['progress'])
+        W, ev = best['W'], best['ev']
         np.save(out / f'readout_iter{it}.npy', W)
-        jobs = [job(lv, cfg, 'reservoir', W, max_steps=args.max_steps, noop=n) for lv in test for n in starts]
-        ev = pool.map(play, jobs, chunksize=1)
-        jobs = [job(s, cfg, 'reservoir', W, max_steps=args.max_steps, noop=0) for s in train_specs]
-        ev_train = pool.map(play, jobs, chunksize=1)
-        rec = {'iteration': it, 'labels': int(len(F)), 'test': summarize(ev), 'train': summarize(ev_train),
+        rec = {'iteration': it, 'labels': int(len(F)), 'alpha': best['alpha'], 'test': best['test'], 'train': best['train'],
                'test_episodes': [{k: e[k] for k in ('level', 'noop', 'progress', 'reached_goal', 'died')} for e in ev],
+               'by_alpha': [{k: c[k] for k in ('alpha', 'fit_q', 'train', 'test')} for c in cands],
                'label_share': np.bincount(Y.argmax(1), minlength=len(ACTION_NAMES)).tolist(),
                'minutes': round((time.time() - t_start) / 60)}
         if it > 0:
             rec['collect'] = summarize(json.loads(str(np.load(out / f'iter{it}.npz')['collect'])))
         history.append(rec)
         hist_path.write_text(json.dumps({'args': vars(args), 'test_levels': test, 'iterations': history}, indent=1))
-        print(f"iter {it}: labels {len(F)} | unseen prog {rec['test']['progress']} +- {rec['test']['se']} "
+        print(f"iter {it}: labels {len(F)} alpha {best['alpha']} | unseen prog {rec['test']['progress']} +- {rec['test']['se']} "
               f"died {rec['test']['died']} goal {rec['test']['finished']} | train prog {rec['train']['progress']} "
               f"died {rec['train']['died']} | {rec['minutes']} min", flush=True)
     pool.close()
