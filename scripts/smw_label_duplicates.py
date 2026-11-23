@@ -14,8 +14,8 @@ from collections import defaultdict
 from smw_readout_lab import attach_streams, load_episodes
 data = Path('runs/smw/v3_all/data'); run = Path('runs/smw/dagger_v3_f0')
 cfg = json.loads((data.parent / 'results.json').read_text())['config']
-off = load_episodes(data); attach_streams(off, cfg, data.parent / 'streams', 1)
-dag = [e for e in load_episodes(run / 'data') if e['iter'] in (1, 2)]; attach_streams(dag, cfg, run / 'streams', 1)
+off = load_episodes(data); attach_streams(off, cfg, data.parent / 'streams', 3)
+dag = [e for e in load_episodes(run / 'data') if e['iter'] in (1, 2)]; attach_streams(dag, cfg, run / 'streams', 3)
 groups = defaultdict(list)
 for e in off + dag:
     st = e['stream'].tocsr()

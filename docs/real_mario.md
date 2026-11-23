@@ -276,20 +276,29 @@ student improves only slightly even on the levels it is labelled on, and stays b
   levels 0.236, unseen 0.143). Weighting critical states 10-50x drives the in-sample unsafe rate to 2-4 %
   without changing play.
 - *Not the reservoir.* On new states of the same training levels (round 2, trained on everything before), every
-  learner picks a deadly button on 28-35 % of critical states, the same as the safest single button (30.5 %):
-  ridge or MLP, on reservoir features or on the raw tile input, weighted or not.
-- *The verdict is not a function of the observation.* Decisions with exactly identical input (obs v2 includes
-  Mario's speed, sub-tile position and sprite speeds) on the same level disagree on whether a button is deadly
-  in 31 % of cases (1114 of 3618 button verdicts; 62 % of repeated critical observations). The teacher itself is
-  almost deterministic: rescoring the same emulator state with other seeds flips 2-3 % of verdicts. So most of
-  the disagreement is state the input does not show. The repeated observations sit mid-level (median step
-  ~500) and recur ~10 times, 62 % within one episode: Mario stands still while something outside the encoding
-  (off-window sprites, sprite timers / AI states, platform phases) changes what is deadly in the next 3 s.
+  learner picks a deadly button on 27-35 % of critical states, the same as the safest single button (30.5 %):
+  ridge or MLP, on reservoir features or on the raw tile input, weighted or not. Safety does not generalize
+  beyond the exact states that were labelled.
+- *The labels at borderline states are partly random.* Decisions with exactly identical input on the same level
+  (`smw_label_duplicates.py`) disagree on whether a button is deadly in 20 % of button verdicts (47 % of
+  repeated critical observations; mostly Mario standing still, consecutive decisions of one episode). Replaying
+  both copies (`smw_label_ram_diff.py`, every replayed input checked against the stored one) shows the same
+  moment with almost identical RAM, and fresh planners give both copies the same verdict (1 % differ,
+  `smw_label_rescore.py`). The same state rescored with another rescue seed differs in 8.5 % of verdicts here
+  (2-3 % on random critical states, `smw_label_noise.py`). So the disagreement is the teacher's random rescue
+  search (and its internal history during collection), not hidden game state.
 
-So the imitation target at the critical moments is not learnable from this observation, and more labels from
-DAgger do not change that. Candidate next steps: find what the hidden variables are (compare RAM between
-disagreeing copies) and add them to the observation, or measure danger over a shorter horizon the input can
-actually predict.
+**A replay bug, found on the way:** `attach_streams` (smw_readout_lab.py) did not pass `mutate` to the replay, so
+the 48 variant episodes of `v3_all` (~11 k of 24 k moments) were replayed on the unmodified base level: their
+input streams and reservoir features did not match their labels (83 % of their feature rows changed after the
+fix; base levels unchanged). Live DAgger labels (rounds 1+) were not affected; the offline data of round 0
+and the training data of every round, the v3 scaling and closed-loop results above, and the first version of
+the label checks were. Fixed in fdbefbe; the label checks above are on the fixed data, the corrected scaling
+and closed-loop numbers follow below.
+
+So more DAgger labels do not teach safety on new states, and the teacher's own verdicts at borderline states
+are noisy. Candidate next steps: make the teacher's verdicts consistent (rescue search seeded by the state, or
+more rollouts), and rerun DAgger on the fixed features.
 
 ## Videos
 
