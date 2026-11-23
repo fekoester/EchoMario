@@ -52,6 +52,7 @@ from echomario.envs.smw_env import ACTION_NAMES, SMWEnv
 from echomario.experts.smw_planner import SMWPlanner, SMWPlannerConfig
 
 A = {n: i for i, n in enumerate(ACTION_NAMES)}
+PROBES = ('idle', 'left', 'right_run_jump', 'right_run')  # verdict fallback: hold one button to the horizon
 PRIOR = ('right_run', 'right_run_jump', 'right_jump', 'right', 'idle', 'jump', 'left', 'left_jump')
 
 
@@ -68,6 +69,7 @@ class AStarConfig:
     q_clip: float = 32.0  # buttons further than this behind the best get a zero target anyway
     budget_steps: int = 1500  # emulator steps per decision (phase 1 may use more)
     verdict_steps: int = 400  # per button in phase 1
+    panic_budget: int = 12000  # while every button looks deadly, keep searching up to this many steps
     stall_px: float = 16.0
     long_horizon: int = 240
     long_budget: int = 8000
@@ -78,15 +80,21 @@ class AStarConfig:
     hurt_penalty: float = 300.0
     goal_bonus: float = 3000.0
     drive_tolerance: float = 0.0  # when driving, pick randomly among buttons this close to the best
+    deep_children: tuple[str, ...] | None = None  # buttons tried after the first segment (None: all eight)
+    pmeter_bucket: int = 1000  # P-meter (0..112) resolution of the duplicate key (1000: ignored)
+    settle_steps: int = 48  # a plan that ends in mid-air is played on until Mario lands (or dies)
+    height_w: float = 0.0  # value per px of height where the plan lands (prefer the high route)
+    height_slack: float = 64.0  # optimistic extra height in the bound
     seed: int = 0
 
 
 class _Node:
-    __slots__ = ('state', 't', 'gain', 'gsum', 'pen', 'x', 'v', 'pm', 'parent', 'a')
+    __slots__ = ('state', 't', 'gain', 'gsum', 'pen', 'x', 'v', 'pm', 'parent', 'a', 'hy')
 
-    def __init__(self, state, t, gain, gsum, pen, x=0.0, v=0.0, pm=0, parent=None, a=-1):
+    def __init__(self, state, t, gain, gsum, pen, x=0.0, v=0.0, pm=0, parent=None, a=-1, hy=0.0):
         self.state, self.t, self.gain, self.gsum, self.pen = state, t, gain, gsum, pen
         self.x, self.v, self.pm, self.parent, self.a = x, v, pm, parent, a
+        self.hy = hy  # height above the start (px, + = higher); at a leaf: where Mario lands
 
     def actions(self) -> list[int]:
         out, n = [], self
@@ -108,7 +116,7 @@ class SMWAStar:
     def __init__(self, cfg: AStarConfig | None = None):
         self.cfg = cfg or AStarConfig()
         self.first = [A[n] for n in PRIOR]
-        self.children = [A[n] for n in PRIOR]
+        self.children = [A[n] for n in (self.cfg.deep_children or PRIOR)]
         self.rank = {A[n]: i for i, n in enumerate(PRIOR)}
         self._pit = SMWPlanner(SMWPlannerConfig(ground_check='column'))  # for its pit-doom check
         self._rng = np.random.default_rng(self.cfg.seed)
@@ -147,12 +155,13 @@ class SMWAStar:
         g = np.maximum(n.gain, self._reach(n, rem))
         ends = np.arange(c.seg, rem + 1, c.seg)  # future segment ends (t is a multiple of seg)
         early = n.gsum + g[ends - 1].sum()
-        return float(g[-1]) + c.earliness * early / (H // c.seg) - n.pen
+        return float(g[-1]) + c.earliness * early / (H // c.seg) - n.pen + c.height_w * (n.hy + c.height_slack)
 
     def _leaf_value(self, n: _Node, goal: bool, H: int) -> float:
         c = self.cfg
         r = max(0, H - n.t) // c.seg  # an early goal keeps its progress for the rest of the plan
-        return n.gain + (c.goal_bonus if goal else 0.0) + c.earliness * (n.gsum + r * n.gain) / (H // c.seg) - n.pen
+        return (n.gain + (c.goal_bonus if goal else 0.0) + c.earliness * (n.gsum + r * n.gain) / (H // c.seg) - n.pen
+                + c.height_w * n.hy)
 
     def _simulate(self, env: SMWEnv, parent: _Node, a: int, root_x: int, start_y: int, H: int):
         """Plays ``a`` for one segment from the parent; returns (node, status) with status 'open', 'dead',
@@ -176,15 +185,50 @@ class SMWAStar:
         w = env._wram()
         m = env.mario(w)
         node = _Node(env.get_sim_state(), t, gain, parent.gsum + gain, pen, float(m['x'] - root_x), m['vx'] / 8.0,
-                     int(w[0x13E4]), parent, a)
+                     int(w[0x13E4]), parent, a, float(start_y - m['y']))
         if t >= H:
-            return node, ('dead' if self._pit._doomed(env, start_y) else 'leaf')
+            doomed, land_y = self._land(env, start_y, a)
+            node.hy = float(start_y - land_y)
+            return node, ('dead' if doomed else 'leaf')
         return node, 'open'
 
+    def _doomed(self, env: SMWEnv, start_y: int, last: int) -> bool:
+        return self._land(env, start_y, last)[0]
+
+    def _land(self, env: SMWEnv, start_y: int, last: int) -> tuple[bool, int]:
+        """Does a plan that ends here in mid-air die, and where does it land? Plays on with a few buttons (the
+        last one first) until Mario lands; doomed if every continuation dies. The static tile check (any ground
+        in a 3-tile column below Mario) counted the far wall of a pit as ground. Leaves the emulator in an
+        undefined state."""
+        c = self.cfg
+        y0 = env.mario()['y']
+        if env.mario()['on_ground']:
+            return False, y0
+        base = env.get_sim_state()
+        for cont in dict.fromkeys((last, A['right_run'], A['left'], A['idle'], A['right_run_jump'])):
+            env.set_sim_state(base)
+            for _ in range(c.settle_steps):
+                env.emulate(cont)
+                _, _, terminated, _, info = env._after_step(compute_obs=False)
+                self.rollout_steps += 1
+                self._steps += 1
+                if terminated:
+                    if not info['died']:
+                        return False, y0
+                    break
+                m = env.mario()
+                if m['on_ground']:
+                    return False, m['y']
+            else:  # still in the air: fall back to the static check
+                if not self._pit._doomed(env, start_y):
+                    return False, env.mario()['y']
+        return True, y0
+
     def _key(self, env: SMWEnv, b: int, t: int, bfs: bool) -> tuple:
-        m = env.mario()
+        w = env._wram()
+        m = env.mario(w)
         return (b, -1 if bfs else t // self.cfg.time_bucket, m['x'] >> 3, m['y'] >> 3, m['vx'] // 6, m['vy'] // 12,
-                m['on_ground'], m['power'])
+                m['on_ground'], m['power'], int(w[0x13E4]) // self.cfg.pmeter_bucket)
 
     def _search(self, env: SMWEnv, root: _Node, root_x: int, start_y: int, H: int, budget: int, bfs: bool = False):
         c = self.cfg
@@ -225,7 +269,7 @@ class SMWAStar:
                 if seen.get(k, -np.inf) >= node.gain:
                     return
                 seen[k] = node.gain
-                if bfs and node.gain > best_open.get(b, (-np.inf, None))[0] and not self._pit._doomed(env, start_y):
+                if bfs and node.gain > best_open.get(b, (-np.inf, None))[0] and not self._doomed(env, start_y, node.a):
                     best_open[b] = (node.gain, node)
                 push(b, node)
             elif status == 'dead':
@@ -241,9 +285,12 @@ class SMWAStar:
             child, status = self._simulate(env, e.node, e.a, root_x, start_y, H)
             settle(b, child, status)
 
+        first_node: dict[int, _Node] = {}
         for b in self.first:
             child, status = self._simulate(env, root, b, root_x, start_y, H)
             settle(b, child, status)
+            if status == 'open':
+                first_node[b] = child
         if bfs:  # stall mode: breadth first; stop a while after the first way past the stall x
             found_at = None
             while wide and self._steps < budget and (found_at is None or self._steps < 1.5 * found_at):
@@ -266,8 +313,22 @@ class SMWAStar:
             s0 = self._steps
             while clean(deep[b]) and best_ok[b] == -np.inf and self._steps - s0 < c.verdict_steps:
                 pop(deep[b], b)
+            # Depth first only varies the last segments of a doomed line. Before calling the button deadly,
+            # hold one button after it to the horizon: brake, stop, bunny-hop, run.
+            for cont in PROBES:
+                if best_ok[b] > -np.inf or b not in first_node:
+                    break
+                node = first_node[b]
+                while True:
+                    child, status = self._simulate(env, node, A[cont], root_x, start_y, H)
+                    settle(b, child, status)
+                    if status != 'open':
+                        break
+                    node = child
         phase1 = self._steps
-        while self._steps < budget:  # phase 2: values of the buttons that matter, best bound first
+        proved = False  # phase 2 ran out of nodes worth expanding (not out of budget)
+        while self._steps < budget or (self._steps < c.panic_budget and max(best_ok.values()) == -np.inf):
+            # phase 2: values of the buttons that matter, best bound first (longer while nothing survives)
             top = max(best_ok.values())
             cand = None
             for b in self.first:
@@ -277,13 +338,14 @@ class SMWAStar:
                 if f > best_ok[b] + c.eps and f > top - c.q_clip and (cand is None or f > cand[0]):
                     cand = (f, b)
             if cand is None:
+                proved = True
                 break
             pop(heaps[cand[1]], cand[1])
         out = np.full(len(ACTION_NAMES), -np.inf, np.float64)
         for b in self.first:
             out[b] = best_ok[b] if best_ok[b] > -np.inf else (best_dead[b] if best_dead[b] > -np.inf else -c.death_penalty)
         paths = {b: n.actions() for b, n in best_node.items()}
-        stats = {'steps': self._steps, 'verdict_steps': phase1, 'proved': self._steps < budget, 'horizon': H}
+        stats = {'steps': self._steps, 'verdict_steps': phase1, 'proved': proved, 'horizon': H}
         return out, paths, stats
 
     def _replay_plan(self, env: SMWEnv, root: _Node, root_x: int, start_y: int, H: int) -> float | None:
@@ -297,9 +359,9 @@ class SMWAStar:
                 return self._leaf_value(node, status == 'goal', H)
         if node.t <= 0:
             return None
-        node = _Node(node.state, H, node.gain, node.gsum + node.gain * ((H - node.t) // self.cfg.seg), node.pen)
+        node = _Node(node.state, H, node.gain, node.gsum + node.gain * ((H - node.t) // self.cfg.seg), node.pen, hy=node.hy)
         env.set_sim_state(node.state)  # a plan shorter than the horizon: judge it where it ends
-        return None if self._pit._doomed(env, start_y) else self._leaf_value(node, False, H)
+        return None if self._doomed(env, start_y, self._plan[-1]) else self._leaf_value(node, False, H)
 
     def scores(self, env: SMWEnv) -> np.ndarray:
         c = self.cfg
