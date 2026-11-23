@@ -19,7 +19,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-
 from smw_imitation import job, play
 
 

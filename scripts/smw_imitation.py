@@ -24,8 +24,16 @@ from pathlib import Path
 
 import numpy as np
 
-from echomario.envs.smw_env import (ACTION_NAMES, BALANCED_TEST_LEVELS, BALANCED_TRAIN_LEVELS, TEST_LEVELS, TRAIN_LEVELS,
-                                   SMWEnv, grid_kwargs, smw_obs_dim)
+from echomario.envs.smw_env import (
+    ACTION_NAMES,
+    BALANCED_TEST_LEVELS,
+    BALANCED_TRAIN_LEVELS,
+    TEST_LEVELS,
+    TRAIN_LEVELS,
+    SMWEnv,
+    grid_kwargs,
+    smw_obs_dim,
+)
 from echomario.experts.smw_astar import SMWAStar, astar_config
 from echomario.experts.smw_planner import SMWPlanner, teacher_config
 from echomario.imitation import FeatureMap, RidgeAccumulator, make_targets
