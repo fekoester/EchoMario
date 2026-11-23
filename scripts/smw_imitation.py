@@ -26,6 +26,7 @@ import numpy as np
 
 from echomario.envs.smw_env import (ACTION_NAMES, BALANCED_TEST_LEVELS, BALANCED_TRAIN_LEVELS, TEST_LEVELS, TRAIN_LEVELS,
                                    SMWEnv, grid_kwargs, smw_obs_dim)
+from echomario.experts.smw_astar import SMWAStar, astar_config
 from echomario.experts.smw_planner import SMWPlanner, teacher_config
 from echomario.imitation import FeatureMap, RidgeAccumulator, make_targets
 
@@ -78,6 +79,15 @@ def student_values(f: np.ndarray, weights) -> np.ndarray:
     return f @ weights
 
 
+def make_teacher(name: str, seed: int = 0):
+    """'v1' / 'v2' / 'v2-collector' / 'v3': SMWPlanner; 'astar' / 'astar-div': the A* teacher (smw_astar.py)."""
+    if name.startswith('astar'):
+        t = SMWAStar(astar_config(name))
+        t.reseed(seed)
+        return t
+    return SMWPlanner(teacher_config(name))
+
+
 def play(j: dict) -> dict:
     """One episode (see job()). beta: probability that the teacher's action is executed at a decision;
     label: the teacher labels the visited states; rescue: rewinds after a student death in labelled runs;
@@ -95,7 +105,7 @@ def play(j: dict) -> dict:
     env.track.steps = env.track.since_progress = 0
     fm = FeatureMap(config, env.obs_dim, mode)
     fm.reset()
-    planner = SMWPlanner(teacher_config(j['teacher'])) if (label or beta > 0) else None
+    planner = make_teacher(j['teacher'], j['seed']) if (label or beta > 0) else None
     feats, targets, labels, tried, raw_scores, sample_pos = [], [], [], [], [], []
     # replay log: the game step and action of every executed step, in order. A rewind shows up as the step
     # number jumping back. The emulator is deterministic, so this reproduces every state (and any

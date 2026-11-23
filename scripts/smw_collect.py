@@ -45,7 +45,8 @@ def main() -> None:
     out = Path(args.out)
     (out / 'data').mkdir(parents=True, exist_ok=True)
     config = json.loads(Path(args.config_from).read_text())['config']
-    (out / 'results.json').write_text(json.dumps({'config': config, 'args': vars(args)}, indent=1))
+    if not (out / 'results.json').exists():  # a resumed run keeps the original arguments
+        (out / 'results.json').write_text(json.dumps({'config': config, 'args': vars(args)}, indent=1))
     rng = np.random.default_rng(0)
     jobs = []
     for r in range(args.runs):
@@ -58,7 +59,8 @@ def main() -> None:
                             noop=noop, run=r))
     print(f'{len(jobs)} teacher episodes to play', flush=True)
     t0 = time.time()
-    summary = []
+    summ_path = out / 'collect_summary.json'
+    summary = json.loads(summ_path.read_text()) if summ_path.exists() else []  # keep rows of a resumed run
     with mp.get_context('fork').Pool(args.workers, maxtasksperchild=1) as pool:
         for ep in pool.imap_unordered(play_run, jobs):
             rec = ep.pop('record')
@@ -68,7 +70,7 @@ def main() -> None:
             row.update(run=r, moments=len(ep['labels']), minutes=round((time.time() - t0) / 60, 1))
             summary.append(row)
             print(row, flush=True)
-            (out / 'collect_summary.json').write_text(json.dumps(summary, indent=1))
+            summ_path.write_text(json.dumps(summary, indent=1))
 
 
 if __name__ == '__main__':
