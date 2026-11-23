@@ -304,6 +304,49 @@ So more DAgger labels do not teach safety on new states, and the teacher's own v
 are noisy. Candidate next steps: make the teacher's verdicts consistent (rescue search seeded by the state, or
 more rollouts), and rerun DAgger on the fixed features.
 
+## A* teacher (2026-11-23)
+
+`src/echomario/experts/smw_astar.py`, teacher names `astar` / `astar-div` (smw_imitation.py, smw_collect.py,
+smw_dagger.py). A deterministic search replaces v3's fixed macros and random rescue rollouts: every button
+(held 4 steps, the decision cadence) is scored by the best plan found within 88 steps, searching sequences of
+4-step segments of any of the 8 buttons over emulator save-states.
+
+- value: progress beyond Mario's x now (not the episode's furthest x, so the scores depend on the state),
+  goal bonus, hurt penalty, plus 0.1 x mean progress over the plan (no procrastination); dying or ending in
+  a pit is deadly.
+- A* bound from Mario's speed and P-meter (measured: +0.375 px/step², run 4.6 px/step, P-speed 6.1 px/step
+  after ~28 steps at run speed); children are emulated lazily; coarse duplicates are merged.
+- verdicts depth first (deadly = no surviving plan in 400 steps of search), then best-first for the values of
+  the buttons within 32 px of the best (q targets clip there anyway).
+- stall mode: when nothing gains 16 px, progress is measured beyond the stall x and the search is breadth
+  first over distinct Mario states with 240 steps; finds run-ups (Forest3's ledge at x 306).
+- the plan behind the executed button is replayed at the next decision; if it survives, its first button
+  cannot be deadly (a found escape is not lost).
+- `astar-div` picks randomly among buttons within 4 px of the best when it drives (diverse trajectories);
+  the labels do not depend on that choice.
+
+Checks (scratch scripts, 4 levels): label quality does not depend on the search budget: 1000, 2000 and 4000
+emulator steps give exactly the q targets and deadly verdicts of 8000 (80 states, 25 with deadly buttons). The
+first version planned in 6-step segments (not aligned with the 4-step decisions) and walked into states where
+every button was deadly; aligned segments and plan replay fixed that.
+
+| level | v3 | A* | A* s / decision |
+|---|---:|---:|---:|
+| YoshiIsland2 | 0.95 goal | 0.95 goal | 3.6 |
+| DonutPlains1 | 0.95 goal | 0.86 (lower path ends at a 7-tile wall, the way back is longer than 8 s) | 8.3 |
+| Forest3 | 0.33 | 0.33 | 11.3 |
+| VanillaDome1 | 0.14 | 0.14 | 12.5 |
+
+Most of the cost is in hopeless stalls (8000 steps per decision, then 2000 after two failures) until the
+stagnation limit ends the episode; outside stalls a decision costs 2-4 s on one core (v3 ~5 s).
+
+Teacher-only data with the A* teacher on the 112 specs of `v3_all` (resumable, low priority):
+
+```bash
+scripts/smw_astar_collect.sh 2      # start / resume with 2 workers -> runs/smw/astar_all
+scripts/smw_astar_collect.sh stop
+```
+
 ## Videos
 
 ```bash
