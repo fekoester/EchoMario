@@ -56,16 +56,16 @@ PROBES = ('idle', 'left', 'right_run_jump', 'right_run')  # verdict fallback: ho
 
 
 def _runups() -> list[list[int]]:
-    """Stall-mode moves for walls and ledges: back off k segments (left), run r, hold run+jump j, then go on
-    running, holding jump, or hopping (whatever is on the ledge may need another jump)."""
-    rr, J = A['right_run'], A['right_run_jump']
-    tails = ([rr] * 12, [J] * 12, [J, J, J, rr] * 3)
+    """Stall-mode moves for walls and ledges: wait w segments (an enemy or platform may need to move), back off
+    k (left), run r, hold run+jump j, then run on or keep hopping (what is on the ledge may need another jump)."""
+    rr, J, L, idle = A['right_run'], A['right_run_jump'], A['left'], A['idle']
     out = []
-    for k in (0, 2, 4, 6, 9, 12):
-        for r in sorted({0, k // 2, k, k + 2}):
-            for j in (3, 5, 8):
-                for tail in tails:
-                    out.append([A['left']] * k + [rr] * r + [J] * j + tail)
+    for w in (0, 4, 8, 12):
+        for k in (0, 3, 6, 9):
+            for r in sorted({k // 2, k}):
+                for j in (3, 6):
+                    for tail in ([rr] * 12, [J, J, J, rr] * 3):
+                        out.append([idle] * w + [L] * k + [rr] * r + [J] * j + tail)
     return out
 
 
@@ -335,7 +335,9 @@ class SMWAStar:
         if bfs and c.runups:  # stall mode, first: run-up moves (back off, run, jump, run on)
             memo: dict[tuple, tuple] = {}  # shared prefixes (the back-off part) are played once
             for seq in RUNUPS:
-                if len(seq) * c.seg > H or self._steps >= budget // 2:
+                if max((g for g, _ in best_open.values()), default=-np.inf) >= c.stall_px:
+                    break  # found a way past
+                if len(seq) * c.seg > H or self._steps >= 0.6 * budget:
                     continue
                 b, node = seq[0], root
                 for i, a in enumerate(seq):
@@ -477,9 +479,12 @@ class SMWAStar:
             steps += stats['steps']
             self.stall_decisions += 1
             self._stall_fails = 0 if out.max() >= c.stall_px else self._stall_fails + 1
-        if self._plan and out[self._plan[0]] <= -c.death_penalty / 2:
+        stalled = self._stall_x is not None
+        if self._plan and (out[self._plan[0]] <= -c.death_penalty / 2 or stalled):
+            # the remembered plan: a rescue when the search calls its button deadly; in stall mode (incomplete
+            # search) also whenever it is better than what the search found this time
             v = self._replay_plan(env, root, ref, start_y, stats['horizon'])
-            if v is not None:
+            if v is not None and v > out[self._plan[0]]:
                 out[self._plan[0]] = v
                 paths[self._plan[0]] = list(self._plan)
                 self.rescued += 1

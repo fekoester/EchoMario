@@ -1,0 +1,72 @@
+{
+ "config": {
+  "deep_children": [
+   "right_run",
+   "right_run_jump",
+   "idle",
+   "left"
+  ]
+ },
+ "rows": [
+  {
+   "level": "Forest1",
+   "progress": 0.122,
+   "goal": false,
+   "died": true,
+   "decisions": 47,
+   "sec_per_decision": 17.21,
+   "stall_decisions": 3,
+   "rescued": 1,
+   "final_x": 621,
+   "v3": 0.951
+  },
+  {
+   "level": "ChocolateIsland1",
+   "progress": 0.317,
+   "goal": false,
+   "died": false,
+   "decisions": 237,
+   "sec_per_decision": 5.01,
+   "stall_decisions": 69,
+   "rescued": 1,
+   "final_x": 1602,
+   "v3": 0.839
+  },
+  {
+   "level": "Forest5",
+   "progress": 0.06,
+   "goal": false,
+   "died": false,
+   "decisions": 97,
+   "sec_per_decision": 4.98,
+   "stall_decisions": 0,
+   "rescued": 0,
+   "final_x": 300,
+   "v3": 0.952
+  },
+  {
+   "level": "VanillaDome3",
+   "progress": 1.0,
+   "goal": false,
+   "died": false,
+   "decisions": 251,
+   "sec_per_decision": 4.96,
+   "stall_decisions": 80,
+   "rescued": 4,
+   "final_x": 2786,
+   "v3": 1.0
+  },
+  {
+   "level": "ChocolateIsland2",
+   "progress": 1.0,
+   "goal": false,
+   "died": false,
+   "decisions": 276,
+   "sec_per_decision": 5.19,
+   "stall_decisions": 81,
+   "rescued": 7,
+   "final_x": 3554,
+   "v3": 1.0
+  }
+ ]
+}

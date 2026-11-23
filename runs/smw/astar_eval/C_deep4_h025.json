@@ -1,0 +1,61 @@
+{
+ "config": {
+  "deep_children": [
+   "right_run",
+   "right_run_jump",
+   "idle",
+   "left"
+  ],
+  "height_w": 0.25
+ },
+ "rows": [
+  {
+   "level": "ChocolateIsland1",
+   "progress": 0.098,
+   "goal": false,
+   "died": false,
+   "decisions": 99,
+   "sec_per_decision": 8.09,
+   "stall_decisions": 75,
+   "rescued": 0,
+   "final_x": 498,
+   "v3": 0.839
+  },
+  {
+   "level": "Forest5",
+   "progress": 0.278,
+   "goal": false,
+   "died": true,
+   "decisions": 120,
+   "sec_per_decision": 4.88,
+   "stall_decisions": 33,
+   "rescued": 3,
+   "final_x": 1383,
+   "v3": 0.952
+  },
+  {
+   "level": "Forest1",
+   "progress": 0.533,
+   "goal": false,
+   "died": false,
+   "decisions": 237,
+   "sec_per_decision": 6.33,
+   "stall_decisions": 5,
+   "rescued": 11,
+   "final_x": 2703,
+   "v3": 0.951
+  },
+  {
+   "level": "VanillaDome3",
+   "progress": 1.0,
+   "goal": false,
+   "died": false,
+   "decisions": 265,
+   "sec_per_decision": 4.87,
+   "stall_decisions": 80,
+   "rescued": 3,
+   "final_x": 2786,
+   "v3": 1.0
+  }
+ ]
+}

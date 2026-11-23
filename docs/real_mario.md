@@ -360,6 +360,53 @@ until it is at least on par with v3. The collection resumes with `scripts/smw_as
 Diagnostic scripts used while building the teacher are in `scripts/dev/astar/` (budget check, per-level
 diagnosis, smoke test, profiler, emulator speed and Mario acceleration measurements).
 
+### Why A* lost, and fixes (2026-11-24, work in progress)
+
+Replaying the lost episodes (`scripts/dev/astar/replay_end.py`, `probe_state.py`, `why_ground.py`):
+
+1. **False "safe" over pits** (Forest1, VanillaDome3). The pit check counts any ground in a 3-tile column
+   under Mario, so the far wall of a pit counted as ground and plans ending mid-air over a pit were safe.
+   Bigger budgets did not help (40 000 steps: every plan ended in the pit). Fix: a plan that ends in mid-air
+   is played on with a few held buttons until Mario lands; doomed if all die (`_land`).
+2. **Dishonest "deadly" verdicts.** Depth-first verdicts only vary the last segments of a doomed line, so
+   stopping before the pit was never tried. Fix: before calling a button deadly, hold one button after it
+   (stop, brake, bunny-hop, run) to the horizon; and while every button looks deadly, search on up to 12 000
+   steps (`panic_budget`).
+3. **Stall mode accepted lines that are alive only for the moment** (running into a pit at full speed).
+   Fix: such a line must survive 48 more steps with some held button (`_survives`).
+4. **Walls that need a run-up at the right time** (Forest5 x 1410: back off, run, jump onto a ledge, but an
+   enemy on the ledge must have moved first). Breadth-first stall search merges states regardless of time,
+   so "wait, then go" was pruned. Fix: stall mode first tries run-up moves (wait w, back off k, run r, hold
+   jump j, run or hop on), then seeded random sticky rollouts (like v3's rescue rollouts, but deterministic
+   for a given state), and keeps the remembered plan when it is better than the new search. At the
+   Forest5 wall this now finds the way (wait, then run up) where nothing did before.
+5. **The low route** (ChocolateIsland1, like DonutPlains1): every plan ends at the same wall at x~515, so
+   all buttons tie and astar-div picks randomly (dithering, Mario loses speed). The high route needs a
+   P-speed run and a precise jump; plain search finds it only with ~40 000 steps (8 000 with 4 buttons
+   after the first segment). Not solved.
+
+Full-level results, one run per level (progress; v3 in brackets):
+
+| config | Forest1 (0.95) | VanillaDome3 (1.00) | Forest5 (0.95) | ChocolateIsland1 (0.84) | ChocolateIsland2 (1.00) |
+|---|---:|---:|---:|---:|---:|
+| before (collection) | 0.12 | 0.36 | 0.28 | 0.10 | 0.46 |
+| fixes 1-2 (8 buttons, deterministic) | **0.92** | 0.46 | 0.28 | 0.10 | |
+| + 4 buttons after the first segment | 0.12 | **1.00** | 0.06 | 0.32 | **1.00** |
+| + 4 buttons + height preference 0.25 | 0.53 | 1.00 | 0.28 | 0.10 | |
+| fixes 1-3 (default at 770626b) | | | 0.28 | 0.10 | |
+
+Single runs are noisy (a different choice early changes the whole run), so no config is clearly best yet.
+Fix 4 (waiting run-ups, plan kept in stall mode) is in the code but has not been tested on a full level:
+the runs were stopped for compute. Results: `runs/smw/astar_eval/*.json`; harness:
+
+```bash
+PYTHONPATH=scripts .venv/bin/python scripts/dev/astar/astar_eval.py --levels Forest1,Forest5,... \
+    --config '{}' --workers 4 --out runs/smw/astar_eval/E.json     # config: AStarConfig fields as JSON
+```
+
+Opt-in options under test: `deep_children` (buttons after the first segment), `height_w` (prefer landing
+higher), `pmeter_bucket` (P-meter in the duplicate key; no effect).
+
 ## Videos
 
 ```bash
