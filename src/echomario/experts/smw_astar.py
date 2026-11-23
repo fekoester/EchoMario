@@ -53,6 +53,22 @@ from echomario.experts.smw_planner import SMWPlanner, SMWPlannerConfig
 
 A = {n: i for i, n in enumerate(ACTION_NAMES)}
 PROBES = ('idle', 'left', 'right_run_jump', 'right_run')  # verdict fallback: hold one button to the horizon
+
+
+def _runups() -> list[list[int]]:
+    """Stall-mode moves for walls and ledges: back off k segments (left), run r, hold run+jump j, then go on
+    running, holding jump, or hopping (whatever is on the ledge may need another jump)."""
+    rr, J = A['right_run'], A['right_run_jump']
+    tails = ([rr] * 12, [J] * 12, [J, J, J, rr] * 3)
+    out = []
+    for k in (0, 2, 4, 6, 9, 12):
+        for r in sorted({0, k // 2, k, k + 2}):
+            for j in (3, 5, 8):
+                for tail in tails:
+                    out.append([A['left']] * k + [rr] * r + [J] * j + tail)
+    return out
+
+
 PRIOR = ('right_run', 'right_run_jump', 'right_jump', 'right', 'idle', 'jump', 'left', 'left_jump')
 
 
@@ -83,9 +99,16 @@ class AStarConfig:
     deep_children: tuple[str, ...] | None = None  # buttons tried after the first segment (None: all eight)
     pmeter_bucket: int = 1000  # P-meter (0..112) resolution of the duplicate key (1000: ignored)
     settle_steps: int = 48  # a plan that ends in mid-air is played on until Mario lands (or dies)
+    runups: bool = True  # stall mode tries the run-up moves before the breadth-first search
+    stall_rollouts: int = 3000  # then random sticky rollouts for up to this many steps
+    stickiness: float = 0.75  # chance a rollout keeps its button for the next segment
     height_w: float = 0.0  # value per px of height where the plan lands (prefer the high route)
     height_slack: float = 64.0  # optimistic extra height in the bound
     seed: int = 0
+
+
+RUNUPS = _runups()
+STICKY = [A[n] for n in ('right_run', 'right_run_jump', 'left', 'idle', 'right_jump', 'jump', 'left_jump')]
 
 
 class _Node:
@@ -195,6 +218,24 @@ class SMWAStar:
     def _doomed(self, env: SMWEnv, start_y: int, last: int) -> bool:
         return self._land(env, start_y, last)[0]
 
+    def _survives(self, env: SMWEnv, last: int) -> bool:
+        """Stall mode keeps the furthest node that is alive before the horizon. Alive is not enough (Mario
+        may be running into a pit at full speed): some held button must survive ``settle_steps`` more steps.
+        Leaves the emulator in an undefined state."""
+        base = env.get_sim_state()
+        for cont in dict.fromkeys((last, A['idle'], A['left'], A['right_run_jump'], A['right_run'])):
+            env.set_sim_state(base)
+            for _ in range(self.cfg.settle_steps):
+                env.emulate(cont)
+                _, _, terminated, _, info = env._after_step(compute_obs=False)
+                self.rollout_steps += 1
+                self._steps += 1
+                if terminated:
+                    break
+            if not terminated or not info['died']:
+                return True
+        return False
+
     def _land(self, env: SMWEnv, start_y: int, last: int) -> tuple[bool, int]:
         """Does a plan that ends here in mid-air die, and where does it land? Plays on with a few buttons (the
         last one first) until Mario lands; doomed if every continuation dies. The static tile check (any ground
@@ -269,7 +310,7 @@ class SMWAStar:
                 if seen.get(k, -np.inf) >= node.gain:
                     return
                 seen[k] = node.gain
-                if bfs and node.gain > best_open.get(b, (-np.inf, None))[0] and not self._doomed(env, start_y, node.a):
+                if bfs and node.gain > best_open.get(b, (-np.inf, None))[0] and self._survives(env, node.a):
                     best_open[b] = (node.gain, node)
                 push(b, node)
             elif status == 'dead':
@@ -291,6 +332,49 @@ class SMWAStar:
             settle(b, child, status)
             if status == 'open':
                 first_node[b] = child
+        if bfs and c.runups:  # stall mode, first: run-up moves (back off, run, jump, run on)
+            memo: dict[tuple, tuple] = {}  # shared prefixes (the back-off part) are played once
+            for seq in RUNUPS:
+                if len(seq) * c.seg > H or self._steps >= budget // 2:
+                    continue
+                b, node = seq[0], root
+                for i, a in enumerate(seq):
+                    key = tuple(seq[:i + 1])
+                    if key not in memo:
+                        memo[key] = self._simulate(env, node, a, root_x, start_y, H)
+                    child, status = memo[key]
+                    if status == 'goal' or status == 'leaf':
+                        settle(b, child, status)
+                        break
+                    if status == 'dead':
+                        break
+                    node = child
+                    if child.gain >= c.stall_px:
+                        if child.gain > best_open.get(b, (-np.inf, None))[0] and self._survives(env, a):
+                            best_open[b] = (child.gain, child)
+                        break
+        if bfs and c.stall_rollouts and max((g for g, _ in best_open.values()), default=-np.inf) < c.stall_px:
+            # stall mode, second: random sticky rollouts (what lets teacher v3 get past walls), seeded by the
+            # game state so the same state gets the same labels
+            rng = np.random.default_rng(abs(hash((root_x, start_y, int(root.x), round(root.v, 2), root.pm))) % 2**32)
+            stop = self._steps + c.stall_rollouts
+            while self._steps < stop:
+                b = self.first[int(rng.integers(len(self.first)))]
+                node, a = root, b
+                for _ in range(H // c.seg):
+                    child, status = self._simulate(env, node, a, root_x, start_y, H)
+                    if status in ('goal', 'leaf'):
+                        settle(b, child, status)
+                        break
+                    if status == 'dead':
+                        break
+                    node = child
+                    if child.gain >= c.stall_px:
+                        if child.gain > best_open.get(b, (-np.inf, None))[0] and self._survives(env, a):
+                            best_open[b] = (child.gain, child)
+                        break
+                    if rng.random() > c.stickiness:
+                        a = int(rng.choice(STICKY))
         if bfs:  # stall mode: breadth first; stop a while after the first way past the stall x
             found_at = None
             while wide and self._steps < budget and (found_at is None or self._steps < 1.5 * found_at):
