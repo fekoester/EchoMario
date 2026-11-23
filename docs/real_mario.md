@@ -347,6 +347,19 @@ scripts/smw_astar_collect.sh 2      # start / resume with 2 workers -> runs/smw/
 scripts/smw_astar_collect.sh stop
 ```
 
+**First 25 of 112 specs (stopped for a shutdown, 2026-11-23):** the A* teacher is *worse* than v3 on the
+full set. Mean progress 0.485 vs 0.647; better on 2 levels (ChocolateIsland3 1.00 vs 0.63, YoshiIsland3),
+worse on 11, equal on the rest. Big losses: Forest1 0.12 vs goal, ChocolateIsland1 0.10 vs 0.84,
+Forest5 0.28 vs goal, VanillaDome3 0.36 vs 1.00, ChocolateIsland2 0.46 vs 1.00, VanillaDome5 0.59 vs goal,
+VanillaDome4 0.07 vs 0.25. Per level list: `runs/smw/astar_vs_v3_partial.txt`. Next step: look at where
+A* gets stuck on those levels (`scripts/dev/astar/astar_diag.py`); likely the 8 s horizon / stall search is
+too short for obstacles v3's long random rollouts get past. Don't build A* features or run DAgger with it
+until it is at least on par with v3. The collection resumes with `scripts/smw_astar_collect.sh N`
+(the 25 finished episodes are kept).
+
+Diagnostic scripts used while building the teacher are in `scripts/dev/astar/` (budget check, per-level
+diagnosis, smoke test, profiler, emulator speed and Mario acceleration measurements).
+
 ## Videos
 
 ```bash
