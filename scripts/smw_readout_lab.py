@@ -71,7 +71,7 @@ def attach_streams(eps: list[dict], config: dict, cache: Path, workers: int) -> 
     todo = [e for e in eps if 'steps' in e and not (d / f"{e['file']}.npz").exists()]
     if todo:
         with mp.get_context('fork').Pool(workers, maxtasksperchild=1) as pool:
-            pool.map(_replay_job, [({k: e[k] for k in ('level', 'noop', 'steps', 'actions', 'prefix', 'end_fraction') if k in e},
+            pool.map(_replay_job, [({k: e[k] for k in ('level', 'noop', 'steps', 'actions', 'prefix', 'end_fraction', 'mutate') if k in e},
                                     kw, d / f"{e['file']}.npz")
                                    for e in todo], chunksize=1)
     for e in eps:
