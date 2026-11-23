@@ -244,6 +244,53 @@ decision puts it where no label exists. The next step is DAgger with teacher v3 
 their variance (state value: 50 %); the raw input explains 60 % (67 %). With the rich v2 input the random
 3000-neuron projection loses information. Memory settings barely matter.
 
+## DAgger with teacher v3, and why the student still dies (2026-11-23)
+
+`scripts/smw_dagger.py`: level fold 0 of the scaling / closed-loop tests (16 unseen levels, 2 start delays);
+the student trains on the other 48 base levels and their variants (84 episodes per round). Round 0 is the
+offline student (teacher data only); each round the student plays every training level while teacher v3
+labels every decision (teacher share 0.3 in round 1, then 0; up to 3 rescue rewinds after a death; random start
+delay 0..40), and the ridge readout is refitted on all labels. Alpha is chosen each round by closed-loop
+progress on the training levels; the unseen levels never choose anything. About 3 h per round on 7 cores.
+
+| round | labels | alpha | unseen levels: progress | died | training levels: progress | died |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 (offline) | 18 963 | 0.01 | 0.132 ± 0.021 | 94 % | 0.209 | 86 % |
+| 1 | 34 049 | 0.001 | 0.169 ± 0.035 | 91 % | 0.228 | 95 % |
+| 2 | 48 189 | 0.001 | 0.137 ± 0.022 | 94 % | 0.233 | 86 % |
+| 3 | 61 886 | 0.001 | 0.156 ± 0.028 | 91 % | 0.237 | 83 % |
+<!-- ROUND4 -->
+
+Fold 0 references (`smw_closed_loop.py`): constant button 0.134, bunny-hop **0.217**. (Round 1 was collected
+by an alpha-10 student; at alpha 10 the readout barely reacts to new labels: only 6 of 84 training levels
+changed, so alpha selection was added and the run restarted from round 1's data.)
+
+DAgger runs as intended (collection progress 0.42-0.45 with rescues, 14-15 k new labels per round), but the
+student improves only slightly even on the levels it is labelled on, and stays below bunny-hop on unseen levels.
+
+**Why** (`scripts/smw_dagger_probes.py`, `smw_label_duplicates.py`, `smw_label_noise.py`):
+
+- *Critical states decide.* In ~10 % of decisions one button is deadly and another is safe. There the student
+  picks a deadly one 12-20 % of the time; over ~150 decisions per level that is almost always a death.
+- *Not capacity.* An MLP readout fits the labels far better (q 0.978 vs 0.885) and plays no better (training
+  levels 0.236, unseen 0.143). Weighting critical states 10-50x drives the in-sample unsafe rate to 2-4 %
+  without changing play.
+- *Not the reservoir.* On new states of the same training levels (round 2, trained on everything before), every
+  learner picks a deadly button on 28-35 % of critical states, the same as the safest single button (30.5 %):
+  ridge or MLP, on reservoir features or on the raw tile input, weighted or not.
+- *The verdict is not a function of the observation.* Decisions with exactly identical input (obs v2 includes
+  Mario's speed, sub-tile position and sprite speeds) on the same level disagree on whether a button is deadly
+  in 31 % of cases (1114 of 3618 button verdicts; 62 % of repeated critical observations). The teacher itself is
+  almost deterministic: rescoring the same emulator state with other seeds flips 2-3 % of verdicts. So most of
+  the disagreement is state the input does not show. The repeated observations sit mid-level (median step
+  ~500) and recur ~10 times, 62 % within one episode: Mario stands still while something outside the encoding
+  (off-window sprites, sprite timers / AI states, platform phases) changes what is deadly in the next 3 s.
+
+So the imitation target at the critical moments is not learnable from this observation, and more labels from
+DAgger do not change that. Candidate next steps: find what the hidden variables are (compare RAM between
+disagreeing copies) and add them to the observation, or measure danger over a shorter horizon the input can
+actually predict.
+
 ## Videos
 
 ```bash
