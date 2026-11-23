@@ -221,19 +221,20 @@ level; q = teacher rating of the chosen button):
 
 | training levels | constant button | reservoir ridge | gain |
 |---:|---:|---:|---:|
-| 1 | 0.765 | 0.737 | −0.028 |
-| 4 | 0.744 | 0.790 | +0.045 |
-| 16 | 0.757 | 0.814 | +0.057 |
-| 48 | 0.759 | 0.831 | +0.072 |
+| 1 | 0.765 | 0.738 | −0.027 |
+| 4 | 0.744 | 0.799 | +0.055 |
+| 16 | 0.757 | 0.826 | +0.069 |
+| 48 | 0.759 | 0.846 | +0.087 |
 
-Positive in every fold at 48 levels (v2 data, 12 levels: +0.014). The MLP overfits (final +0.008).
+Positive in every fold at 48 levels (+0.066 to +0.106; v2 data, 12 levels: +0.014). The MLP overfits (final
++0.017). Numbers after the variant replay fix (see the DAgger section; before: +0.072 at 48 levels).
 
 **…but not in play** (`scripts/smw_closed_loop.py`: the 48-level ridge student plays the 16 held-out levels
 alone, 2 start delays):
 
 | policy | mean progress | died |
 |---|---:|---:|
-| ridge student | 0.172 | 72 % |
+| ridge student (alpha 10 / alpha 1) | 0.171 / 0.175 | 72 % / 70 % |
 | constant button (4-step cadence) | 0.185 | 70 % |
 | bunny-hop | 0.239 | 87 % |
 
@@ -293,8 +294,8 @@ the 48 variant episodes of `v3_all` (~11 k of 24 k moments) were replayed on the
 input streams and reservoir features did not match their labels (83 % of their feature rows changed after the
 fix; base levels unchanged). Live DAgger labels (rounds 1+) were not affected; the offline data of round 0
 and the training data of every round, the v3 scaling and closed-loop results above, and the first version of
-the label checks were. Fixed in fdbefbe; the label checks above are on the fixed data, the corrected scaling
-and closed-loop numbers follow below.
+the label checks were. Fixed in fdbefbe; the label checks above are on the fixed data, the scaling and
+closed-loop tables of Version 3 are corrected (offline gain +0.087 instead of +0.072; play unchanged).
 
 So more DAgger labels do not teach safety on new states, and the teacher's own verdicts at borderline states
 are noisy. Candidate next steps: make the teacher's verdicts consistent (rescue search seeded by the state, or
