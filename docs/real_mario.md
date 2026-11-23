@@ -260,14 +260,17 @@ progress on the training levels; the unseen levels never choose anything. About 
 | 1 | 34 049 | 0.001 | 0.169 ± 0.035 | 91 % | 0.228 | 95 % |
 | 2 | 48 189 | 0.001 | 0.137 ± 0.022 | 94 % | 0.233 | 86 % |
 | 3 | 61 886 | 0.001 | 0.156 ± 0.028 | 91 % | 0.237 | 83 % |
-<!-- ROUND4 -->
+| 4 | 75 782 | 0.001 | 0.153 ± 0.031 | 91 % | 0.256 | 87 % |
 
 Fold 0 references (`smw_closed_loop.py`): constant button 0.134, bunny-hop **0.217**. (Round 1 was collected
 by an alpha-10 student; at alpha 10 the readout barely reacts to new labels: only 6 of 84 training levels
 changed, so alpha selection was added and the run restarted from round 1's data.)
 
-DAgger runs as intended (collection progress 0.42-0.45 with rescues, 14-15 k new labels per round), but the
-student improves only slightly even on the levels it is labelled on, and stays below bunny-hop on unseen levels.
+DAgger runs as intended (collection progress 0.41-0.45 with rescues, 14-15 k new labels per round), but the
+student improves only slowly even on the levels it is labelled on (0.209 -> 0.256 after 4 rounds, 57 k DAgger
+labels, ~9 h) and stays flat and below bunny-hop on unseen levels (0.15 ± 0.03 from round 1 on; the best
+unseen number in the per-alpha log, 0.191, is a different alpha and was not selected). Per-round results:
+`runs/smw/dagger_v3_f0_results.json`.
 
 **Why** (`scripts/smw_dagger_probes.py`, `smw_label_duplicates.py`, `smw_label_noise.py`):
 

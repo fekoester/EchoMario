@@ -1,0 +1,3458 @@
+[
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "Bridges1",
+  "noop": 0,
+  "progress": 0.05730659025787966,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "Bridges1",
+  "noop": 0,
+  "progress": 0.05981375358166189,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "Bridges1",
+  "noop": 20,
+  "progress": 0.05730659025787966,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "Bridges1",
+  "noop": 20,
+  "progress": 0.05981375358166189,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "Bridges2",
+  "noop": 0,
+  "progress": 0.05536786786786787,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "Bridges2",
+  "noop": 0,
+  "progress": 0.052552552552552555,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "Bridges2",
+  "noop": 20,
+  "progress": 0.018205705705705705,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "Bridges2",
+  "noop": 20,
+  "progress": 0.1188063063063063,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "ChocolateIsland2",
+  "noop": 0,
+  "progress": 0.0661764705882353,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "ChocolateIsland2",
+  "noop": 0,
+  "progress": 0.06985294117647059,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "ChocolateIsland2",
+  "noop": 20,
+  "progress": 0.06532805429864254,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "ChocolateIsland2",
+  "noop": 20,
+  "progress": 0.06928733031674209,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "ChocolateIsland3",
+  "noop": 0,
+  "progress": 0.11782786885245902,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "ChocolateIsland3",
+  "noop": 0,
+  "progress": 0.11782786885245902,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "ChocolateIsland3",
+  "noop": 20,
+  "progress": 0.09016393442622951,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "ChocolateIsland3",
+  "noop": 20,
+  "progress": 0.1864754098360656,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "DonutPlains3",
+  "noop": 0,
+  "progress": 0.2826834862385321,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "DonutPlains3",
+  "noop": 0,
+  "progress": 0.2918577981651376,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "DonutPlains3",
+  "noop": 20,
+  "progress": 0.2826834862385321,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "DonutPlains3",
+  "noop": 20,
+  "progress": 0.02121559633027523,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L0F",
+  "noop": 0,
+  "progress": 0.04842342342342342,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L0F",
+  "noop": 0,
+  "progress": 0.052177177177177174,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L0F",
+  "noop": 20,
+  "progress": 0.05292792792792793,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L0F",
+  "noop": 20,
+  "progress": 0.054804804804804805,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L16",
+  "noop": 0,
+  "progress": 0.03048245614035088,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L16",
+  "noop": 0,
+  "progress": 0.03048245614035088,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L16",
+  "noop": 20,
+  "progress": 0.02412280701754386,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L16",
+  "noop": 20,
+  "progress": 0.02412280701754386,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L49",
+  "noop": 0,
+  "progress": 0.009454813359528488,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L49",
+  "noop": 0,
+  "progress": 0.030820235756385067,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L49",
+  "noop": 20,
+  "progress": 0.004543222003929273,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L49",
+  "noop": 20,
+  "progress": 0.011296660117878193,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L4B",
+  "noop": 0,
+  "progress": 0.03705533596837945,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L4B",
+  "noop": 0,
+  "progress": 0.04397233201581028,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L4B",
+  "noop": 20,
+  "progress": 0.03680830039525692,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L4B",
+  "noop": 20,
+  "progress": 0.042490118577075096,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L54",
+  "noop": 0,
+  "progress": 0.8101851851851852,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L54",
+  "noop": 0,
+  "progress": 0.8101851851851852,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L54",
+  "noop": 20,
+  "progress": 0.03935185185185185,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L54",
+  "noop": 20,
+  "progress": 0.1597222222222222,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L5A",
+  "noop": 0,
+  "progress": 0.05901486988847584,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L5A",
+  "noop": 0,
+  "progress": 0.06087360594795539,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "L5A",
+  "noop": 20,
+  "progress": 0.05901486988847584,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "L5A",
+  "noop": 20,
+  "progress": 0.06087360594795539,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LE7",
+  "noop": 0,
+  "progress": 0.16700819672131148,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LE7",
+  "noop": 0,
+  "progress": 0.16598360655737704,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LE7",
+  "noop": 20,
+  "progress": 0.15368852459016394,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LE7",
+  "noop": 20,
+  "progress": 0.1526639344262295,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LE8",
+  "noop": 0,
+  "progress": 0.3944954128440367,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LE8",
+  "noop": 0,
+  "progress": 0.39793577981651373,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LE8",
+  "noop": 20,
+  "progress": 0.3944954128440367,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LE8",
+  "noop": 20,
+  "progress": 0.39793577981651373,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LEC",
+  "noop": 0,
+  "progress": 0.1989247311827957,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LEC",
+  "noop": 0,
+  "progress": 0.20094086021505375,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "LEC",
+  "noop": 20,
+  "progress": 0.2049731182795699,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "LEC",
+  "noop": 20,
+  "progress": 0.20698924731182797,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "VanillaDome5",
+  "noop": 0,
+  "progress": 0.06368296529968455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "VanillaDome5",
+  "noop": 0,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "VanillaDome5",
+  "noop": 20,
+  "progress": 0.06368296529968455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "VanillaDome5",
+  "noop": 20,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "YoshiIsland1",
+  "noop": 0,
+  "progress": 0.019124605678233438,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "YoshiIsland1",
+  "noop": 0,
+  "progress": 0.09759463722397477,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "ridge",
+  "level": "YoshiIsland1",
+  "noop": 20,
+  "progress": 0.013801261829652996,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "constant",
+  "level": "YoshiIsland1",
+  "noop": 20,
+  "progress": 0.09818611987381703,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "DonutPlains2",
+  "noop": 0,
+  "progress": 0.07572751322751323,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "DonutPlains2",
+  "noop": 0,
+  "progress": 0.07572751322751323,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "DonutPlains2",
+  "noop": 20,
+  "progress": 0.06977513227513228,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "DonutPlains2",
+  "noop": 20,
+  "progress": 0.06977513227513228,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L0D",
+  "noop": 0,
+  "progress": 0.9583333333333334,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L0D",
+  "noop": 0,
+  "progress": 0.959005376344086,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L0D",
+  "noop": 20,
+  "progress": 0.9583333333333334,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L0D",
+  "noop": 20,
+  "progress": 0.959005376344086,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L0E",
+  "noop": 0,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L0E",
+  "noop": 0,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L0E",
+  "noop": 20,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L0E",
+  "noop": 20,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L11",
+  "noop": 0,
+  "progress": 0.1315928270042194,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L11",
+  "noop": 0,
+  "progress": 0.1315928270042194,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L11",
+  "noop": 20,
+  "progress": 0.1315928270042194,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L11",
+  "noop": 20,
+  "progress": 0.1315928270042194,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L14",
+  "noop": 0,
+  "progress": 0.30762987012987014,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L14",
+  "noop": 0,
+  "progress": 0.22808441558441558,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L14",
+  "noop": 20,
+  "progress": 0.30762987012987014,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L14",
+  "noop": 20,
+  "progress": 0.22808441558441558,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L17",
+  "noop": 0,
+  "progress": 0.032,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L17",
+  "noop": 0,
+  "progress": 0.057,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L17",
+  "noop": 20,
+  "progress": 0.032,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L17",
+  "noop": 20,
+  "progress": 0.0565,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L1C",
+  "noop": 0,
+  "progress": 0.2703025477707006,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L1C",
+  "noop": 0,
+  "progress": 0.2746815286624204,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "L1C",
+  "noop": 20,
+  "progress": 0.15843949044585987,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "L1C",
+  "noop": 20,
+  "progress": 0.2746815286624204,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LE1",
+  "noop": 0,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LE1",
+  "noop": 0,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LE1",
+  "noop": 20,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LE1",
+  "noop": 20,
+  "progress": 0.265,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LE3",
+  "noop": 0,
+  "progress": 0.8883196721311475,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LE3",
+  "noop": 0,
+  "progress": 0.8872950819672131,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LE3",
+  "noop": 20,
+  "progress": 0.8883196721311475,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LE3",
+  "noop": 20,
+  "progress": 0.8872950819672131,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LEA",
+  "noop": 0,
+  "progress": 0.35348360655737704,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LEA",
+  "noop": 0,
+  "progress": 0.36885245901639346,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LEA",
+  "noop": 20,
+  "progress": 0.35348360655737704,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LEA",
+  "noop": 20,
+  "progress": 0.36885245901639346,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LF1",
+  "noop": 0,
+  "progress": 0.1168032786885246,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LF1",
+  "noop": 0,
+  "progress": 0.1168032786885246,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LF1",
+  "noop": 20,
+  "progress": 0.1168032786885246,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LF1",
+  "noop": 20,
+  "progress": 0.08299180327868852,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LF6",
+  "noop": 0,
+  "progress": 0.16477272727272727,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LF6",
+  "noop": 0,
+  "progress": 0.16233766233766234,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LF6",
+  "noop": 20,
+  "progress": 0.15016233766233766,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LF6",
+  "noop": 20,
+  "progress": 0.14853896103896103,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LFF",
+  "noop": 0,
+  "progress": 0.8587662337662337,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LFF",
+  "noop": 0,
+  "progress": 0.8587662337662337,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "LFF",
+  "noop": 20,
+  "progress": 0.8587662337662337,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "LFF",
+  "noop": 20,
+  "progress": 0.8060064935064936,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "VanillaDome3",
+  "noop": 0,
+  "progress": 0.15715317919075145,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "VanillaDome3",
+  "noop": 0,
+  "progress": 0.15390173410404626,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "VanillaDome3",
+  "noop": 20,
+  "progress": 0.15715317919075145,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "VanillaDome3",
+  "noop": 20,
+  "progress": 0.15390173410404626,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "VanillaDome4",
+  "noop": 0,
+  "progress": 0.03266208251473477,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "VanillaDome4",
+  "noop": 0,
+  "progress": 0.03327603143418468,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "VanillaDome4",
+  "noop": 20,
+  "progress": 0.03266208251473477,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "VanillaDome4",
+  "noop": 20,
+  "progress": 0.03327603143418468,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "YoshiIsland2",
+  "noop": 0,
+  "progress": 0.26084384858044163,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "YoshiIsland2",
+  "noop": 0,
+  "progress": 0.26123817034700314,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "ridge",
+  "level": "YoshiIsland2",
+  "noop": 20,
+  "progress": 0.26084384858044163,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "constant",
+  "level": "YoshiIsland2",
+  "noop": 20,
+  "progress": 0.26123817034700314,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "DonutPlains4",
+  "noop": 0,
+  "progress": 0.061908517350157725,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "DonutPlains4",
+  "noop": 0,
+  "progress": 0.06466876971608833,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "DonutPlains4",
+  "noop": 20,
+  "progress": 0.061908517350157725,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "DonutPlains4",
+  "noop": 20,
+  "progress": 0.06466876971608833,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "DonutPlains5",
+  "noop": 0,
+  "progress": 0.0638801261829653,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "DonutPlains5",
+  "noop": 0,
+  "progress": 0.06368296529968455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "DonutPlains5",
+  "noop": 20,
+  "progress": 0.0638801261829653,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "DonutPlains5",
+  "noop": 20,
+  "progress": 0.06368296529968455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest1",
+  "noop": 0,
+  "progress": 0.03765772870662461,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest1",
+  "noop": 0,
+  "progress": 0.03726340694006309,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest1",
+  "noop": 20,
+  "progress": 0.03430599369085174,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest1",
+  "noop": 20,
+  "progress": 0.03410883280757098,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest2",
+  "noop": 0,
+  "progress": 0.04581447963800905,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest2",
+  "noop": 0,
+  "progress": 0.04581447963800905,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest2",
+  "noop": 20,
+  "progress": 0.04581447963800905,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest2",
+  "noop": 20,
+  "progress": 0.04581447963800905,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest3",
+  "noop": 0,
+  "progress": 0.06033123028391167,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest3",
+  "noop": 0,
+  "progress": 0.06033123028391167,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest3",
+  "noop": 20,
+  "progress": 0.06033123028391167,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest3",
+  "noop": 20,
+  "progress": 0.06033123028391167,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest4",
+  "noop": 0,
+  "progress": 0.18208092485549132,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest4",
+  "noop": 0,
+  "progress": 0.17449421965317918,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "Forest4",
+  "noop": 20,
+  "progress": 0.18208092485549132,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "Forest4",
+  "noop": 20,
+  "progress": 0.17449421965317918,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L10",
+  "noop": 0,
+  "progress": 0.17,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L10",
+  "noop": 0,
+  "progress": 0.1695,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L10",
+  "noop": 20,
+  "progress": 0.17,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L10",
+  "noop": 20,
+  "progress": 0.1695,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L15",
+  "noop": 0,
+  "progress": 0.145,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L15",
+  "noop": 0,
+  "progress": 0.1455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L15",
+  "noop": 20,
+  "progress": 0.145,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L15",
+  "noop": 20,
+  "progress": 0.1455,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L19",
+  "noop": 0,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L19",
+  "noop": 0,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L19",
+  "noop": 20,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L19",
+  "noop": 20,
+  "progress": 0.06348580441640378,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L4C",
+  "noop": 0,
+  "progress": 0.021293375394321766,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L4C",
+  "noop": 0,
+  "progress": 0.021293375394321766,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L4C",
+  "noop": 20,
+  "progress": 0.0887223974763407,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L4C",
+  "noop": 20,
+  "progress": 0.0887223974763407,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L4F",
+  "noop": 0,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L4F",
+  "noop": 0,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L4F",
+  "noop": 20,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L4F",
+  "noop": 20,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L50",
+  "noop": 0,
+  "progress": 0.06309148264984227,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L50",
+  "noop": 0,
+  "progress": 0.06585173501577288,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L50",
+  "noop": 20,
+  "progress": 0.06309148264984227,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L50",
+  "noop": 20,
+  "progress": 0.06585173501577288,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L59",
+  "noop": 0,
+  "progress": 0.05954258675078864,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L59",
+  "noop": 0,
+  "progress": 0.06171135646687697,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "L59",
+  "noop": 20,
+  "progress": 0.05954258675078864,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "L59",
+  "noop": 20,
+  "progress": 0.06171135646687697,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "LE5",
+  "noop": 0,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "LE5",
+  "noop": 0,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "LE5",
+  "noop": 20,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "LE5",
+  "noop": 20,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "VanillaDome1",
+  "noop": 0,
+  "progress": 0.037296037296037296,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "VanillaDome1",
+  "noop": 0,
+  "progress": 0.03787878787878788,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "VanillaDome1",
+  "noop": 20,
+  "progress": 0.036567599067599064,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "VanillaDome1",
+  "noop": 20,
+  "progress": 0.037296037296037296,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "VanillaDome2",
+  "noop": 0,
+  "progress": 0.04140378548895899,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "VanillaDome2",
+  "noop": 0,
+  "progress": 0.09858044164037855,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "ridge",
+  "level": "VanillaDome2",
+  "noop": 20,
+  "progress": 0.03884069400630915,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "constant",
+  "level": "VanillaDome2",
+  "noop": 20,
+  "progress": 0.09818611987381703,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "ChocolateIsland1",
+  "noop": 0,
+  "progress": 0.04002365930599369,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "ChocolateIsland1",
+  "noop": 0,
+  "progress": 0.04002365930599369,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "ChocolateIsland1",
+  "noop": 20,
+  "progress": 0.03588328075709779,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "ChocolateIsland1",
+  "noop": 20,
+  "progress": 0.036474763406940065,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "DonutPlains1",
+  "noop": 0,
+  "progress": 0.07866719242902208,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "DonutPlains1",
+  "noop": 0,
+  "progress": 0.07827287066246057,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "DonutPlains1",
+  "noop": 20,
+  "progress": 0.07866719242902208,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "DonutPlains1",
+  "noop": 20,
+  "progress": 0.07827287066246057,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "Forest5",
+  "noop": 0,
+  "progress": 0.07728706624605679,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "Forest5",
+  "noop": 0,
+  "progress": 0.07748422712933754,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "Forest5",
+  "noop": 20,
+  "progress": 0.07728706624605679,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "Forest5",
+  "noop": 20,
+  "progress": 0.07748422712933754,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L01",
+  "noop": 0,
+  "progress": 0.121,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L01",
+  "noop": 0,
+  "progress": 0.1215,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L01",
+  "noop": 20,
+  "progress": 0.121,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L01",
+  "noop": 20,
+  "progress": 0.1215,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L0B",
+  "noop": 0,
+  "progress": 0.03850210970464135,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L0B",
+  "noop": 0,
+  "progress": 0.03850210970464135,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L0B",
+  "noop": 20,
+  "progress": 0.03850210970464135,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L0B",
+  "noop": 20,
+  "progress": 0.03850210970464135,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L13",
+  "noop": 0,
+  "progress": 0.058951104100946373,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L13",
+  "noop": 0,
+  "progress": 0.05540220820189275,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L13",
+  "noop": 20,
+  "progress": 0.05540220820189275,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L13",
+  "noop": 20,
+  "progress": 0.05540220820189275,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L22",
+  "noop": 0,
+  "progress": 0.11863057324840764,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L22",
+  "noop": 0,
+  "progress": 0.11863057324840764,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L22",
+  "noop": 20,
+  "progress": 0.11863057324840764,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L22",
+  "noop": 20,
+  "progress": 0.11863057324840764,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L4A",
+  "noop": 0,
+  "progress": 0.039826498422712936,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L4A",
+  "noop": 0,
+  "progress": 0.040417981072555204,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L4A",
+  "noop": 20,
+  "progress": 0.03667192429022082,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L4A",
+  "noop": 20,
+  "progress": 0.03706624605678233,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L51",
+  "noop": 0,
+  "progress": 0.07886435331230283,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L51",
+  "noop": 0,
+  "progress": 0.02050473186119874,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "L51",
+  "noop": 20,
+  "progress": 0.07827287066246057,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "L51",
+  "noop": 20,
+  "progress": 0.012618296529968454,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LE2",
+  "noop": 0,
+  "progress": 0.27561475409836067,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LE2",
+  "noop": 0,
+  "progress": 0.2766393442622951,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LE2",
+  "noop": 20,
+  "progress": 0.27049180327868855,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LE2",
+  "noop": 20,
+  "progress": 0.27049180327868855,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LE6",
+  "noop": 0,
+  "progress": 0.14959016393442623,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LE6",
+  "noop": 0,
+  "progress": 0.15061475409836064,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LE6",
+  "noop": 20,
+  "progress": 0.13729508196721313,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LE6",
+  "noop": 20,
+  "progress": 0.13831967213114754,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF0",
+  "noop": 0,
+  "progress": 0.11987704918032786,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF0",
+  "noop": 0,
+  "progress": 0.11987704918032786,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF0",
+  "noop": 20,
+  "progress": 0.33094262295081966,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF0",
+  "noop": 20,
+  "progress": 0.09938524590163934,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF4",
+  "noop": 0,
+  "progress": 0.06586021505376344,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF4",
+  "noop": 0,
+  "progress": 0.9583333333333334,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF4",
+  "noop": 20,
+  "progress": 0.06586021505376344,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF4",
+  "noop": 20,
+  "progress": 0.9583333333333334,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF5",
+  "noop": 0,
+  "progress": 0.25,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF5",
+  "noop": 0,
+  "progress": 0.2489754098360656,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "LF5",
+  "noop": 20,
+  "progress": 0.24795081967213115,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "LF5",
+  "noop": 20,
+  "progress": 0.24795081967213115,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "YoshiIsland3",
+  "noop": 0,
+  "progress": 0.06888138138138138,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "YoshiIsland3",
+  "noop": 0,
+  "progress": 0.06888138138138138,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "YoshiIsland3",
+  "noop": 20,
+  "progress": 0.06888138138138138,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "YoshiIsland3",
+  "noop": 20,
+  "progress": 0.06888138138138138,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "YoshiIsland4",
+  "noop": 0,
+  "progress": 0.12644508670520233,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "YoshiIsland4",
+  "noop": 0,
+  "progress": 0.12716763005780346,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "ridge",
+  "level": "YoshiIsland4",
+  "noop": 20,
+  "progress": 0.12644508670520233,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "constant",
+  "level": "YoshiIsland4",
+  "noop": 20,
+  "progress": 0.12716763005780346,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "Bridges1",
+  "noop": 0,
+  "progress": 0.055873925501432664,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "Bridges1",
+  "noop": 20,
+  "progress": 0.055873925501432664,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "Bridges2",
+  "noop": 0,
+  "progress": 0.024962462462462462,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "Bridges2",
+  "noop": 20,
+  "progress": 0.07695195195195195,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland2",
+  "noop": 0,
+  "progress": 0.09954751131221719,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland2",
+  "noop": 20,
+  "progress": 0.09954751131221719,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland3",
+  "noop": 0,
+  "progress": 0.11782786885245902,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland3",
+  "noop": 20,
+  "progress": 0.45389344262295084,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "DonutPlains3",
+  "noop": 0,
+  "progress": 0.654243119266055,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "DonutPlains3",
+  "noop": 20,
+  "progress": 0.02121559633027523,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L0F",
+  "noop": 0,
+  "progress": 0.05067567567567568,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L0F",
+  "noop": 20,
+  "progress": 0.06756756756756757,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L16",
+  "noop": 0,
+  "progress": 0.1675438596491228,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L16",
+  "noop": 20,
+  "progress": 0.02412280701754386,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L49",
+  "noop": 0,
+  "progress": 0.03057465618860511,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L49",
+  "noop": 20,
+  "progress": 0.011296660117878193,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L4B",
+  "noop": 0,
+  "progress": 0.07336956521739131,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L4B",
+  "noop": 20,
+  "progress": 0.08349802371541502,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L54",
+  "noop": 0,
+  "progress": 0.8101851851851852,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L54",
+  "noop": 20,
+  "progress": 0.8101851851851852,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L5A",
+  "noop": 0,
+  "progress": 0.10525092936802974,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "L5A",
+  "noop": 20,
+  "progress": 0.10525092936802974,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LE7",
+  "noop": 0,
+  "progress": 0.42725409836065575,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LE7",
+  "noop": 20,
+  "progress": 0.42725409836065575,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LE8",
+  "noop": 0,
+  "progress": 0.3927752293577982,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LE8",
+  "noop": 20,
+  "progress": 0.3927752293577982,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LEC",
+  "noop": 0,
+  "progress": 0.20026881720430106,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "LEC",
+  "noop": 20,
+  "progress": 0.21370967741935484,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "VanillaDome5",
+  "noop": 0,
+  "progress": 0.08990536277602523,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "VanillaDome5",
+  "noop": 20,
+  "progress": 0.08990536277602523,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland1",
+  "noop": 0,
+  "progress": 0.6218454258675079,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 0,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland1",
+  "noop": 20,
+  "progress": 0.08438485804416404,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "DonutPlains2",
+  "noop": 0,
+  "progress": 0.1765873015873016,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "DonutPlains2",
+  "noop": 20,
+  "progress": 0.11342592592592593,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L0D",
+  "noop": 0,
+  "progress": 0.3239247311827957,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L0D",
+  "noop": 20,
+  "progress": 0.3239247311827957,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L0E",
+  "noop": 0,
+  "progress": 0.5805,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L0E",
+  "noop": 20,
+  "progress": 0.5785,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L11",
+  "noop": 0,
+  "progress": 0.16930379746835442,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L11",
+  "noop": 20,
+  "progress": 0.16930379746835442,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L14",
+  "noop": 0,
+  "progress": 0.46915584415584416,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L14",
+  "noop": 20,
+  "progress": 0.46915584415584416,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L17",
+  "noop": 0,
+  "progress": 0.056,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L17",
+  "noop": 20,
+  "progress": 0.054,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L1C",
+  "noop": 0,
+  "progress": 0.2746815286624204,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "L1C",
+  "noop": 20,
+  "progress": 0.2746815286624204,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LE1",
+  "noop": 0,
+  "progress": 0.5805,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LE1",
+  "noop": 20,
+  "progress": 0.5785,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LE3",
+  "noop": 0,
+  "progress": 0.8872950819672131,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LE3",
+  "noop": 20,
+  "progress": 0.8872950819672131,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LEA",
+  "noop": 0,
+  "progress": 0.38831967213114754,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LEA",
+  "noop": 20,
+  "progress": 0.38831967213114754,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LF1",
+  "noop": 0,
+  "progress": 0.11782786885245902,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LF1",
+  "noop": 20,
+  "progress": 0.08299180327868852,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LF6",
+  "noop": 0,
+  "progress": 0.49512987012987014,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LF6",
+  "noop": 20,
+  "progress": 0.1387987012987013,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LFF",
+  "noop": 0,
+  "progress": 0.8587662337662337,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "LFF",
+  "noop": 20,
+  "progress": 0.8060064935064936,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "VanillaDome3",
+  "noop": 0,
+  "progress": 0.1513728323699422,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "VanillaDome3",
+  "noop": 20,
+  "progress": 0.1513728323699422,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "VanillaDome4",
+  "noop": 0,
+  "progress": 0.03941552062868369,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "VanillaDome4",
+  "noop": 20,
+  "progress": 0.03941552062868369,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland2",
+  "noop": 0,
+  "progress": 0.951301261829653,
+  "goal": true,
+  "died": false
+ },
+ {
+  "fold": 1,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland2",
+  "noop": 20,
+  "progress": 0.951301261829653,
+  "goal": true,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "DonutPlains4",
+  "noop": 0,
+  "progress": 0.08931388012618297,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "DonutPlains4",
+  "noop": 20,
+  "progress": 0.08438485804416404,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "DonutPlains5",
+  "noop": 0,
+  "progress": 0.14136435331230285,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "DonutPlains5",
+  "noop": 20,
+  "progress": 0.14136435331230285,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest1",
+  "noop": 0,
+  "progress": 0.07472397476340693,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest1",
+  "noop": 20,
+  "progress": 0.07472397476340693,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest2",
+  "noop": 0,
+  "progress": 0.07635746606334842,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest2",
+  "noop": 20,
+  "progress": 0.07635746606334842,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest3",
+  "noop": 0,
+  "progress": 0.10626971608832808,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest3",
+  "noop": 20,
+  "progress": 0.10626971608832808,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest4",
+  "noop": 0,
+  "progress": 0.1907514450867052,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "Forest4",
+  "noop": 20,
+  "progress": 0.1907514450867052,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L10",
+  "noop": 0,
+  "progress": 0.225,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L10",
+  "noop": 20,
+  "progress": 0.225,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L15",
+  "noop": 0,
+  "progress": 0.2575,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L15",
+  "noop": 20,
+  "progress": 0.2575,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L19",
+  "noop": 0,
+  "progress": 0.09029968454258674,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L19",
+  "noop": 20,
+  "progress": 0.09029968454258674,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L4C",
+  "noop": 0,
+  "progress": 0.021293375394321766,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L4C",
+  "noop": 20,
+  "progress": 0.16246056782334384,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L4F",
+  "noop": 0,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L4F",
+  "noop": 20,
+  "progress": 0.08742774566473989,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L50",
+  "noop": 0,
+  "progress": 0.08261041009463722,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L50",
+  "noop": 20,
+  "progress": 0.08261041009463722,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L59",
+  "noop": 0,
+  "progress": 0.11967665615141956,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "L59",
+  "noop": 20,
+  "progress": 0.11967665615141956,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "LE5",
+  "noop": 0,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "LE5",
+  "noop": 20,
+  "progress": 0.9200819672131147,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "VanillaDome1",
+  "noop": 0,
+  "progress": 0.038607226107226104,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "VanillaDome1",
+  "noop": 20,
+  "progress": 0.035256410256410256,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "VanillaDome2",
+  "noop": 0,
+  "progress": 0.1391955835962145,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 2,
+  "policy": "bunny_hop",
+  "level": "VanillaDome2",
+  "noop": 20,
+  "progress": 0.09936908517350158,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland1",
+  "noop": 0,
+  "progress": 0.07689274447949526,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "ChocolateIsland1",
+  "noop": 20,
+  "progress": 0.07689274447949526,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "DonutPlains1",
+  "noop": 0,
+  "progress": 0.27858832807570977,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "DonutPlains1",
+  "noop": 20,
+  "progress": 0.27858832807570977,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "Forest5",
+  "noop": 0,
+  "progress": 0.2513801261829653,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "Forest5",
+  "noop": 20,
+  "progress": 0.2513801261829653,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L01",
+  "noop": 0,
+  "progress": 0.0615,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L01",
+  "noop": 20,
+  "progress": 0.0615,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L0B",
+  "noop": 0,
+  "progress": 0.23575949367088608,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L0B",
+  "noop": 20,
+  "progress": 0.23575949367088608,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L13",
+  "noop": 0,
+  "progress": 0.026222397476340694,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L13",
+  "noop": 20,
+  "progress": 0.025236593059936908,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L22",
+  "noop": 0,
+  "progress": 0.15087579617834396,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L22",
+  "noop": 20,
+  "progress": 0.15087579617834396,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L4A",
+  "noop": 0,
+  "progress": 0.07551261829652997,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L4A",
+  "noop": 20,
+  "progress": 0.07472397476340693,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L51",
+  "noop": 0,
+  "progress": 0.02050473186119874,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "L51",
+  "noop": 20,
+  "progress": 0.11849369085173501,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LE2",
+  "noop": 0,
+  "progress": 0.2930327868852459,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LE2",
+  "noop": 20,
+  "progress": 0.7991803278688525,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LE6",
+  "noop": 0,
+  "progress": 0.5368852459016393,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LE6",
+  "noop": 20,
+  "progress": 0.13422131147540983,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF0",
+  "noop": 0,
+  "progress": 0.11987704918032786,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF0",
+  "noop": 20,
+  "progress": 0.09938524590163934,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF4",
+  "noop": 0,
+  "progress": 0.06586021505376344,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF4",
+  "noop": 20,
+  "progress": 0.06586021505376344,
+  "goal": false,
+  "died": false
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF5",
+  "noop": 0,
+  "progress": 0.2346311475409836,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "LF5",
+  "noop": 20,
+  "progress": 0.1834016393442623,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland3",
+  "noop": 0,
+  "progress": 0.07864114114114114,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland3",
+  "noop": 20,
+  "progress": 0.07864114114114114,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland4",
+  "noop": 0,
+  "progress": 0.28395953757225434,
+  "goal": false,
+  "died": true
+ },
+ {
+  "fold": 3,
+  "policy": "bunny_hop",
+  "level": "YoshiIsland4",
+  "noop": 20,
+  "progress": 0.28395953757225434,
+  "goal": false,
+  "died": true
+ }
+]
